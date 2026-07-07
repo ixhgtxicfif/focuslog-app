@@ -705,7 +705,8 @@ document.addEventListener("DOMContentLoaded", function(){
 function boot(){
   // only the function-path URL needs the trailing-slash canonicalization
   if(location.hostname.indexOf(".supabase.co")>=0 && location.pathname.indexOf("/functions/")===0 && !location.pathname.endsWith("/")){ location.replace(location.pathname+"/"+location.search+location.hash); return; }
-  var m=(location.hash||"").match(/key=([0-9a-fA-F-]{36})/);
+  // accept the key from #key=… or ?key=… (messengers often strip fragments)
+  var m=(location.hash||"").match(/key=([0-9a-fA-F-]{36})/) || (location.search||"").match(/key=([0-9a-fA-F-]{36})/);
   if(m){ localStorage.setItem("focuslog-key", m[1].toLowerCase()); history.replaceState(null,"",location.pathname); }
   if(!getKey()){ $("setup").classList.remove("hidden"); $("app").classList.add("hidden"); return; }
   $("setup").classList.add("hidden"); $("app").classList.remove("hidden");
