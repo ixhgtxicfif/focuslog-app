@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101216">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon.png">
+<title>Focus Log</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root { --bg:#101216; --panel:#171a20; --card:#1d2129; --text:#e8eaf0; --muted:#8b91a0; --faint:#5c6270; --line:#2a2f3a; --accent:#5b8def; --p1:#e5533c; --p2:#f2a65a; --p3:#5b8def; }
+html,body { background:var(--bg); color:var(--text); font:15px/1.5 -apple-system,"Segoe UI",system-ui,sans-serif; }
+body { padding: env(safe-area-inset-top) 14px calc(env(safe-area-inset-bottom) + 20px); max-width:520px; margin:0 auto; }
+h1 { font-size:17px; font-weight:600; }
+header { display:flex; align-items:center; gap:10px; padding:14px 2px 10px; }
+header .dot { width:11px; height:11px; border-radius:50%; background:var(--accent); }
+header .status { margin-left:auto; color:var(--faint); font-size:12px; }
+.tabs { display:flex; gap:6px; margin-bottom:12px; background:var(--panel); border:1px solid var(--line); border-radius:11px; padding:4px; }
+.tabs button { flex:1; background:none; border:none; border-radius:8px; color:var(--muted); font-size:14px; font-weight:600; padding:9px 0; }
+.tabs button.on { background:var(--card); color:var(--text); }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; }
+.card h2 { font-size:12px; text-transform:uppercase; letter-spacing:.07em; color:var(--faint); margin-bottom:10px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+.grid button { display:flex; align-items:center; gap:8px; padding:11px 12px; background:var(--card); border:1px solid var(--line); border-radius:9px; color:var(--text); font-size:14px; text-align:left; }
+.grid button:active { border-color:var(--accent); }
+.grid .cdot { width:9px; height:9px; border-radius:50%; background:var(--c); flex-shrink:0; }
+input[type=text] { width:100%; padding:11px 13px; background:var(--card); border:1px solid var(--line); border-radius:9px; color:var(--text); font-size:15px; outline:none; margin-top:8px; }
+input[type=text]:focus { border-color:var(--accent); }
+.tl-row { display:flex; align-items:baseline; gap:9px; padding:7px 2px; border-bottom:1px solid #1c2029; font-size:13.5px; }
+.tl-row:last-child { border-bottom:none; }
+.tl-row .time { color:var(--faint); font-size:12px; font-variant-numeric:tabular-nums; flex-shrink:0; }
+.tl-row .cdot { width:8px; height:8px; border-radius:50%; background:var(--c,#7a7f8c); flex-shrink:0; align-self:center; }
+.tl-row .note { color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tl-row .x { margin-left:auto; color:var(--faint); padding:0 6px; background:none; border:none; font-size:15px; }
+.ghost { background:none; border:1px solid var(--line); border-radius:8px; color:var(--muted); padding:8px 14px; font-size:13.5px; }
+.primary { background:var(--accent); border:none; border-radius:9px; color:#fff; padding:11px 16px; font-size:14.5px; font-weight:600; width:100%; margin-top:10px; }
+.center { text-align:center; color:var(--faint); font-size:13px; padding:10px 0; }
+.toast { position:fixed; bottom:calc(env(safe-area-inset-bottom) + 18px); left:50%; transform:translateX(-50%); background:var(--card); border:1px solid var(--line); border-radius:9px; padding:9px 16px; font-size:13.5px; z-index:5; }
+#setup { padding-top:8vh; }
+#setup p { color:var(--muted); font-size:14px; margin:10px 0; }
+.hidden { display:none !important; }
+
+/* ---- tasks tab ---- */
+.filters { display:flex; gap:7px; overflow-x:auto; padding:2px 0 10px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.filters::-webkit-scrollbar { display:none; }
+.filters button { flex-shrink:0; display:inline-flex; align-items:center; gap:6px; background:var(--panel); border:1px solid var(--line); border-radius:20px; color:var(--muted); font-size:13.5px; padding:7px 14px; }
+.filters button.on { background:#232a3a; color:var(--text); border-color:#33415e; }
+.filters .fdot { width:9px; height:9px; border-radius:50%; }
+.filters .fcnt { color:var(--faint); font-size:12px; }
+.filters .fcnt.alert { color:var(--p1); font-weight:700; }
+.qa-row { display:flex; gap:7px; align-items:center; margin-bottom:4px; }
+.qa-row input { margin-top:0; flex:1; min-width:0; }
+.qa-row .go { background:var(--accent); border:none; border-radius:9px; color:#fff; font-size:15px; font-weight:600; padding:11px 16px; flex-shrink:0; }
+.qa-hint { display:flex; flex-wrap:wrap; gap:6px; align-items:center; padding:6px 2px 2px; }
+.qa-hint span { background:var(--card); border:1px solid var(--line); border-radius:14px; color:var(--muted); font-size:11.5px; padding:2px 9px; }
+.qa-help { color:var(--faint); font-size:11.5px; padding:6px 2px 2px; }
+.tsec { margin:16px 0 4px; }
+.tsec-h { display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:2px; }
+.tsec-h .t { font-size:13.5px; font-weight:700; }
+.tsec-h.red .t { color:var(--p1); }
+.tsec-h .c { color:var(--faint); font-size:12px; flex:1; }
+.tsec-h .act { background:none; border:1px solid var(--line); border-radius:7px; color:var(--muted); font-size:12px; padding:4px 10px; }
+.trow { display:flex; align-items:center; gap:10px; padding:10px 2px; border-bottom:1px solid #1a1e26; }
+.trow.done .tx { color:var(--faint); text-decoration:line-through; }
+.tcheck { width:22px; height:22px; border-radius:50%; background:transparent; border:1.8px solid var(--faint); flex-shrink:0; position:relative; padding:0; }
+.tcheck.p1 { border-color:var(--p1); background:rgba(229,83,60,.12); }
+.tcheck.p2 { border-color:var(--p2); background:rgba(242,166,90,.12); }
+.tcheck.p3 { border-color:var(--p3); background:rgba(91,141,239,.12); }
+.tcheck.checked { background:var(--faint); border-color:var(--faint); }
+.tcheck.checked::after { content:'✓'; position:absolute; inset:0; font-size:13px; line-height:19px; text-align:center; color:var(--bg); }
+.tmain { flex:1; min-width:0; }
+.tx { font-size:14.5px; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tmeta { display:flex; gap:8px; align-items:center; margin-top:2px; }
+.tmeta span { font-size:11.5px; color:var(--faint); display:inline-flex; align-items:center; gap:4px; }
+.tmeta .late { color:var(--p1); }
+.tmeta .pd { width:8px; height:8px; border-radius:50%; }
+.more { background:none; border:none; color:var(--faint); font-size:18px; padding:4px 8px; flex-shrink:0; }
+.tedit { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px; margin:6px 0 10px; }
+.tedit input[type=text] { margin-top:0; }
+.tedit .row2 { display:flex; gap:7px; margin-top:8px; }
+.tedit input[type=date], .tedit select { flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:13.5px; padding:8px; min-width:0; }
+.tedit .lbl { color:var(--faint); font-size:11px; text-transform:uppercase; letter-spacing:.05em; margin:8px 0 3px; }
+.tedit .prios { display:flex; gap:7px; margin-top:2px; }
+.tedit .prios button { flex:1; background:var(--bg); border:1px solid var(--line); border-radius:8px; color:var(--muted); font-size:13px; padding:7px 0; }
+.tedit .prios button.on1 { border-color:var(--p1); color:var(--p1); }
+.tedit .prios button.on2 { border-color:var(--p2); color:var(--p2); }
+.tedit .prios button.on3 { border-color:var(--p3); color:var(--p3); }
+.tedit .acts { display:flex; gap:7px; margin-top:10px; }
+.tedit .acts .danger { background:none; border:1px solid #4a2a26; border-radius:8px; color:var(--p1); font-size:13.5px; padding:9px 14px; }
+.tedit .acts .save { flex:1; background:var(--accent); border:none; border-radius:8px; color:#fff; font-weight:600; font-size:13.5px; padding:9px 0; }
+.proj-head { display:flex; gap:8px; align-items:center; margin:14px 0 2px; }
+.proj-head .ghost { padding:5px 11px; font-size:12.5px; }
+.tempty { color:var(--faint); font-size:13px; padding:14px 2px; }
+</style>
+</head>
+<body>
+<div id="setup" class="hidden">
+  <header><span class="dot"></span><h1>Focus Log</h1></header>
+  <div class="card">
+    <h2>Connect your account</h2>
+    <p>Paste the sync key from the desktop app (Settings → Sync → Copy phone link, or copy the key itself).</p>
+    <input type="text" id="key-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocapitalize="off" autocorrect="off">
+    <button class="primary" id="key-save">Connect</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <span class="dot"></span><h1>Focus Log</h1>
+    <span class="status" id="status"></span>
+    <button class="ghost" id="refresh" style="padding:6px 10px">↻</button>
+  </header>
+
+  <div class="tabs">
+    <button id="tab-log" class="on">⏱ Log</button>
+    <button id="tab-tasks">✓ Tasks <span id="tab-tasks-cnt" style="font-weight:400;color:var(--faint)"></span></button>
+  </div>
+
+  <div id="pane-log">
+    <div class="card">
+      <h2>Plan for today <span id="plan-progress" style="color:var(--accent)"></span></h2>
+      <div id="plan-list"></div>
+      <input type="text" id="plan-add" placeholder="Add a task for today…" enterkeyhint="done">
+    </div>
+
+    <div class="card">
+      <h2>Log the last 15 min</h2>
+      <div class="grid" id="cats"></div>
+      <input type="text" id="note" placeholder="Optional detail… then tap a category" enterkeyhint="send">
+    </div>
+
+    <div class="card">
+      <h2>Today <span id="counts" style="color:var(--faint);text-transform:none;letter-spacing:0"></span></h2>
+      <div id="timeline"><p class="center">Nothing logged yet.</p></div>
+    </div>
+
+    <div class="card" id="push-card">
+      <h2>Reminders on this phone</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="push-interval" style="background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-size:14px">
+          <option value="15">every 15 min</option>
+          <option value="30">every 30 min</option>
+          <option value="45">every 45 min</option>
+          <option value="60">every hour</option>
+        </select>
+        <input type="time" id="push-start" value="09:00" style="background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-size:14px">
+        <span style="color:var(--faint)">–</span>
+        <input type="time" id="push-end" value="19:00" style="background:var(--card);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-size:14px">
+      </div>
+      <button class="primary" id="push-btn">🔔 Enable reminders</button>
+      <p class="center" id="push-status"></p>
+    </div>
+  </div>
+
+  <div id="pane-tasks" class="hidden">
+    <div class="filters" id="filters"></div>
+    <div class="qa-row">
+      <input type="text" id="qa" placeholder="Add a task…  завтра !1 #проект до 25.07" enterkeyhint="done" autocapitalize="sentences">
+      <button class="go" id="qa-go">＋</button>
+    </div>
+    <div class="qa-hint hidden" id="qa-hint"></div>
+    <p class="qa-help">Dates: <b>сегодня · завтра · пн–вс · 15.07 · tomorrow · fri</b> · deadline: <b>до 20.07</b> · priority: <b>!1 !2 !3</b> · project: <b>#имя</b></p>
+    <div id="tasks-list"></div>
+  </div>
+</div>
+
+<script>
+var CATS = [
+  ["Deep work","deep","#5B8DEF"],["Meeting / call","meeting","#B47AEA"],
+  ["Admin / messages","admin","#F2A65A"],["Planning","planning","#4FC1A6"],
+  ["Content / writing","content","#E86A92"],["Research","research","#58B7D4"],
+  ["Learning","learning","#9CCC65"],["Break","break","#8D99AE"],
+  ["Family / personal","personal","#F4C95D"],["Distracted","distracted","#E5533C"]
+];
+var COLORS = {}; CATS.forEach(function(c){ COLORS[c[1]] = c[2]; });
+var PRIO = { 1:"#e5533c", 2:"#f2a65a", 3:"#5b8def" };
+var PROJECT_COLORS = ["#e5533c","#f2a65a","#f4c95d","#4fc1a6","#58b7d4","#5b8def","#b47aea","#e86a92"];
+// The page is hosted on GitHub Pages (Supabase rewrites any HTML it serves to
+// text/plain), so the API base is absolute unless we're on the function origin.
+var API = (location.hostname.indexOf(".supabase.co") >= 0 && location.pathname.indexOf("/functions/") === 0)
+  ? "."
+  : "https://nmpomxomlhxyywgbgpfd.supabase.co/functions/v1/focuslog";
+var state = { entries: [], plans: {}, tab: "log", filter: "today", editId: null };
+
+function $(id){ return document.getElementById(id); }
+function uuid(){ return crypto.randomUUID(); }
+function pad(n){ return (n<10?"0":"")+n; }
+function dkOf(d){ return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function todayKey(){ return dkOf(new Date()); }
+function dayPlus(n){ var d=new Date(); return dkOf(new Date(d.getFullYear(), d.getMonth(), d.getDate()+n)); }
+function hm(iso){ var d=new Date(iso); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+var toastTimer;
+function toast(msg){ var t=document.createElement("div"); t.className="toast"; t.textContent=msg;
+  document.body.appendChild(t); clearTimeout(toastTimer); toastTimer=setTimeout(function(){ t.remove(); },2200);
+  document.querySelectorAll(".toast").forEach(function(x){ if(x!==t) x.remove(); }); }
+
+function getKey(){ return localStorage.getItem("focuslog-key"); }
+
+function req(path, opts){
+  opts = opts || {};
+  opts.headers = Object.assign({ "x-sync-key": getKey(), "content-type": "application/json" }, opts.headers||{});
+  return fetch(API+path, opts).then(function(r){
+    if(!r.ok) return r.json().catch(function(){ return {}; }).then(function(b){ throw new Error(b.error||("HTTP "+r.status)); });
+    return r.json();
+  });
+}
+
+function pull(){
+  $("status").textContent = "sync…";
+  return req("/api/pull").then(function(res){
+    var day = todayKey();
+    state.entries = res.entries.filter(function(e){ return e.day===day && !e.deleted; });
+    state.plans = {};
+    res.plans.forEach(function(p){ state.plans[p.day] = p.items || []; });
+    $("status").textContent = "✓ " + hm(new Date().toISOString());
+    render();
+  }).catch(function(e){ $("status").textContent = "offline"; toast("Sync error: "+e.message); });
+}
+
+function pushEntries(entries){
+  return req("/api/push", { method:"POST", body: JSON.stringify({ entries: entries }) });
+}
+function itemsOf(day){ if(!state.plans[day]) state.plans[day]=[]; return state.plans[day]; }
+function pushDay(day){
+  return req("/api/push", { method:"POST", body: JSON.stringify({ plans:[{ day: day, items: state.plans[day]||[] }] }) })
+    .catch(function(err){ toast("Sync failed: "+err.message); });
+}
+function projects(){ return state.plans["projects"]||[]; }
+function projById(id){ return projects().filter(function(p){ return p.id===id; })[0]||null; }
+
+function logCategory(cat){
+  var now = new Date();
+  var e = {
+    id: uuid(), day: todayKey(),
+    slotStart: new Date(now - 15*60000).toISOString(), slotEnd: now.toISOString(),
+    loggedAt: now.toISOString(), category: cat[1], label: cat[0],
+    note: $("note").value.trim() || null, focus: null,
+    skipped:false, missed:false, snoozed:false, appTitle:null, deleted:false
+  };
+  state.entries.push(e); $("note").value=""; render();
+  pushEntries([e]).then(function(){ toast("Logged: "+cat[0]); })
+    .catch(function(err){ toast("Failed: "+err.message); });
+}
+
+function delEntry(e){
+  e.deleted = true;
+  state.entries = state.entries.filter(function(x){ return x.id!==e.id; });
+  render();
+  pushEntries([e]).catch(function(err){ toast("Failed: "+err.message); });
+}
+
+/* ---------- natural-language quick add ---------- */
+
+var WD = { "пн":1,"вт":2,"ср":3,"чт":4,"пт":5,"сб":6,"вс":0,
+  "понедельник":1,"вторник":2,"среда":3,"среду":3,"четверг":4,"пятница":5,"пятницу":5,"суббота":6,"субботу":6,"воскресенье":0,
+  "mon":1,"tue":2,"wed":3,"thu":4,"fri":5,"sat":6,"sun":0,
+  "monday":1,"tuesday":2,"wednesday":3,"thursday":4,"friday":5,"saturday":6,"sunday":0 };
+
+function dateFromToken(tok){
+  var t = tok.toLowerCase().replace(/[,.!?]+$/,"");
+  var now = new Date();
+  if(t==="сегодня"||t==="today") return dayPlus(0);
+  if(t==="завтра"||t==="tomorrow"||t==="tmr") return dayPlus(1);
+  if(t==="послезавтра") return dayPlus(2);
+  if(t in WD){ var diff=(WD[t]-now.getDay()+7)%7; if(!diff) diff=7; return dayPlus(diff); }
+  var m = t.match(/^(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?$/);
+  if(m){
+    var d=+m[1], mo=+m[2];
+    if(d<1||d>31||mo<1||mo>12) return null;
+    var y = m[3] ? (+m[3]<100 ? 2000+ +m[3] : +m[3]) : now.getFullYear();
+    var dt = new Date(y, mo-1, d);
+    if(!m[3] && dt < new Date(now.getFullYear(), now.getMonth(), now.getDate())) dt = new Date(y+1, mo-1, d);
+    return dkOf(dt);
+  }
+  return null;
+}
+
+function fmtDay(dk){
+  if(dk===todayKey()) return "Today";
+  if(dk===dayPlus(1)) return "Tomorrow";
+  var p = dk.split("-");
+  return new Date(+p[0], +p[1]-1, +p[2]).toLocaleDateString(undefined, { weekday:"short", day:"numeric", month:"short" });
+}
+
+function parseQuick(raw){
+  var out = { text:"", date:null, deadline:null, priority:null, projectId:null, chips:[] };
+  var toks = raw.trim().split(/\s+/), kept=[];
+  for(var i=0;i<toks.length;i++){
+    var tok=toks[i], low=tok.toLowerCase();
+    var pm = low.match(/^[!pп]([1-3])$/);
+    if(pm){ out.priority=+pm[1]; out.chips.push("P"+pm[1]); continue; }
+    if(tok.charAt(0)==="#" && tok.length>1){
+      var q=low.slice(1);
+      var pr=projects().filter(function(p){ return p.text.toLowerCase().replace(/\s+/g,"").indexOf(q)===0; })[0];
+      if(pr){ out.projectId=pr.id; out.chips.push("# "+pr.text); continue; }
+    }
+    if((low==="до"||low==="by"||low==="к") && i+1<toks.length){
+      var dd=dateFromToken(toks[i+1]);
+      if(dd){ out.deadline=dd; out.chips.push("⏰ "+fmtDay(dd)); i++; continue; }
+    }
+    if((low==="через" && (toks[i+1]||"").toLowerCase().indexOf("недел")===0) ||
+       (low==="next" && (toks[i+1]||"").toLowerCase()==="week")){
+      out.date=dayPlus(7); out.chips.push("📅 "+fmtDay(out.date)); i++; continue;
+    }
+    var dt=dateFromToken(tok);
+    if(dt && !out.date){ out.date=dt; out.chips.push("📅 "+fmtDay(dt)); continue; }
+    kept.push(tok);
+  }
+  out.text = kept.join(" ");
+  return out;
+}
+
+/* ---------- tasks tab ---------- */
+
+function overdueList(filterProj){
+  var tk=todayKey(), out=[];
+  Object.keys(state.plans).forEach(function(day){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || day>=tk) return;
+    (state.plans[day]||[]).forEach(function(it){
+      if(!it.done && (!filterProj || it.projectId===filterProj)) out.push({ day:day, item:it });
+    });
+  });
+  out.sort(function(a,b){ return a.day<b.day?-1:1; });
+  return out;
+}
+
+function openTodayCount(){
+  var n = overdueList(null).length;
+  (state.plans[todayKey()]||[]).forEach(function(i){ if(!i.done) n++; });
+  return n;
+}
+
+function setFilter(f){ state.filter=f; state.editId=null; renderTasks(); }
+
+function renderFilters(){
+  var wrap=$("filters"); wrap.innerHTML="";
+  var over=overdueList(null).length;
+  var defs=[
+    { id:"today", label:"☀️ Today", cnt:openTodayCount(), alert:over>0 },
+    { id:"upcoming", label:"📆 Upcoming" },
+    { id:"inbox", label:"📥 Inbox", cnt:(state.plans["inbox"]||[]).filter(function(i){return !i.done;}).length }
+  ];
+  defs.forEach(function(d){
+    var b=document.createElement("button");
+    b.className=state.filter===d.id?"on":"";
+    b.innerHTML=d.label+(d.cnt?' <span class="fcnt'+(d.alert?' alert':'')+'">'+d.cnt+"</span>":"");
+    b.onclick=function(){ setFilter(d.id); };
+    wrap.appendChild(b);
+  });
+  projects().forEach(function(p){
+    var b=document.createElement("button");
+    b.className=state.filter==="project:"+p.id?"on":"";
+    var dot=document.createElement("span"); dot.className="fdot"; dot.style.background=p.color||"#7a7f8c";
+    b.appendChild(dot); b.appendChild(document.createTextNode(p.text));
+    b.onclick=function(){ setFilter("project:"+p.id); };
+    wrap.appendChild(b);
+  });
+  var add=document.createElement("button");
+  add.textContent="＋ project";
+  add.onclick=function(){
+    var name=prompt("Project name:");
+    if(!name||!name.trim()) return;
+    var items=itemsOf("projects");
+    items.push({ id:uuid(), text:name.trim(), done:false, color:PROJECT_COLORS[items.length%PROJECT_COLORS.length] });
+    pushDay("projects").then(pull);
+  };
+  wrap.appendChild(add);
+}
+
+function buildSections(){
+  var tk=todayKey();
+  var pf = state.filter.indexOf("project:")===0 ? state.filter.slice(8) : null;
+  function match(i){ return !pf || i.projectId===pf; }
+  function dayTasks(dk, all){
+    return (state.plans[dk]||[]).filter(function(i){ return match(i)&&(all||!i.done); })
+      .map(function(it){ return { day:dk, item:it }; });
+  }
+  var secs=[], over=overdueList(pf);
+  if(over.length) secs.push({ t:"Overdue", red:true, tasks:over, act:"→ Today" });
+  if(state.filter==="today"){
+    secs.push({ t:"Today", tasks:dayTasks(tk,true), empty:"Nothing scheduled — enjoy ✨" });
+  } else if(state.filter==="upcoming"){
+    secs.push({ t:fmtDay(tk)==="Today"?"Today":fmtDay(tk), tasks:dayTasks(tk), empty:"Free." });
+    var seen={}; seen[dayPlus(1)]=true;
+    var days=[dayPlus(1)];
+    Object.keys(state.plans).forEach(function(dk){
+      if(/^\d{4}-\d{2}-\d{2}$/.test(dk) && dk>tk && !seen[dk]){ seen[dk]=true; days.push(dk); }
+    });
+    days.sort().forEach(function(dk){
+      var ts=dayTasks(dk);
+      if(dk!==dayPlus(1) && !ts.length) return;
+      secs.push({ t:fmtDay(dk), tasks:ts, empty:"Free." });
+    });
+  } else if(state.filter==="inbox"){
+    secs.push({ t:"Inbox", tasks:(state.plans["inbox"]||[]).filter(function(i){return match(i)&&!i.done;}).map(function(it){return {day:"inbox",item:it};}), empty:"Inbox zero 🎉" });
+  } else {
+    var td=dayTasks(tk); if(td.length) secs.push({ t:"Today", tasks:td });
+    var up=[];
+    Object.keys(state.plans).sort().forEach(function(dk){
+      if(/^\d{4}-\d{2}-\d{2}$/.test(dk) && dk>tk) up=up.concat(dayTasks(dk));
+    });
+    if(up.length) secs.push({ t:"Upcoming", tasks:up, showDate:true });
+    secs.push({ t:"Someday (no date)", tasks:(state.plans["inbox"]||[]).filter(function(i){return match(i)&&!i.done;}).map(function(it){return {day:"inbox",item:it};}), empty:"Nothing undated." });
+    var done=[];
+    Object.keys(state.plans).forEach(function(dk){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(dk) && dk!=="inbox") return;
+      (state.plans[dk]||[]).forEach(function(i){ if(i.done&&match(i)) done.push({day:dk,item:i}); });
+    });
+    if(done.length) secs.push({ t:"Completed ("+done.length+")", tasks:done, collapsed:true });
+  }
+  return secs;
+}
+
+function rescheduleOverdue(){
+  var tk=todayKey();
+  var pf = state.filter.indexOf("project:")===0 ? state.filter.slice(8) : null;
+  var touched={};
+  overdueList(pf).forEach(function(o){
+    state.plans[o.day] = (state.plans[o.day]||[]).filter(function(i){ return i.id!==o.item.id; });
+    itemsOf(tk).push(o.item);
+    touched[o.day]=true; touched[tk]=true;
+  });
+  Promise.all(Object.keys(touched).map(pushDay)).then(function(){ renderTasks(); });
+  renderTasks();
+}
+
+function taskRow(entry, sec){
+  var day=entry.day, item=entry.item;
+  var row=document.createElement("div"); row.className="trow"+(item.done?" done":"");
+  var check=document.createElement("button");
+  check.className="tcheck"+(item.priority?" p"+item.priority:"")+(item.done?" checked":"");
+  check.onclick=function(){
+    item.done=!item.done;
+    pushDay(day); renderTasks(); renderLogPlan();
+  };
+  var main=document.createElement("div"); main.className="tmain";
+  var tx=document.createElement("span"); tx.className="tx"; tx.textContent=item.text;
+  main.appendChild(tx);
+  var meta=document.createElement("div"); meta.className="tmeta";
+  if(sec.showDate||sec.red){
+    var ds=document.createElement("span"); ds.textContent="📅 "+fmtDay(day);
+    if(day<todayKey()) ds.className="late";
+    meta.appendChild(ds);
+  }
+  if(item.deadline){
+    var dl=document.createElement("span"); dl.textContent="⏰ "+fmtDay(item.deadline);
+    if(item.deadline<=todayKey()&&!item.done) dl.className="late";
+    meta.appendChild(dl);
+  }
+  var pr=projById(item.projectId);
+  if(pr && state.filter.indexOf("project:")!==0){
+    var ps=document.createElement("span");
+    var pd=document.createElement("i"); pd.className="pd"; pd.style.background=pr.color||"#7a7f8c"; pd.style.display="inline-block";
+    ps.appendChild(pd); ps.appendChild(document.createTextNode(pr.text));
+    meta.appendChild(ps);
+  }
+  if(meta.children.length) main.appendChild(meta);
+  var more=document.createElement("button"); more.className="more"; more.textContent="⋯";
+  more.onclick=function(){ state.editId = state.editId===item.id ? null : item.id; renderTasks(); };
+  row.appendChild(check); row.appendChild(main); row.appendChild(more);
+  var frag=document.createDocumentFragment();
+  frag.appendChild(row);
+  if(state.editId===item.id) frag.appendChild(taskEditor(day, item));
+  return frag;
+}
+
+function taskEditor(day, item){
+  var box=document.createElement("div"); box.className="tedit";
+  var tin=document.createElement("input"); tin.type="text"; tin.value=item.text;
+
+  var l1=document.createElement("div"); l1.className="lbl"; l1.textContent="Scheduled / deadline";
+  var r2=document.createElement("div"); r2.className="row2";
+  var din=document.createElement("input"); din.type="date"; if(day!=="inbox") din.value=day;
+  var dlin=document.createElement("input"); dlin.type="date"; if(item.deadline) dlin.value=item.deadline;
+  r2.appendChild(din); r2.appendChild(dlin);
+
+  var l2=document.createElement("div"); l2.className="lbl"; l2.textContent="Priority / project";
+  var prios=document.createElement("div"); prios.className="prios";
+  var pcur=item.priority||null;
+  [1,2,3,null].forEach(function(p){
+    var b=document.createElement("button");
+    b.textContent=p?("P"+p):"—";
+    if(p===pcur) b.className="on"+(p||"");
+    b.onclick=function(){ pcur = (pcur===p?null:p);
+      prios.querySelectorAll("button").forEach(function(x,idx){ var v=[1,2,3,null][idx]; x.className = v===pcur?("on"+(v||"")):""; });
+    };
+    prios.appendChild(b);
+  });
+  var psel=document.createElement("select");
+  var o0=document.createElement("option"); o0.value=""; o0.textContent="No project"; psel.appendChild(o0);
+  projects().forEach(function(p){
+    var o=document.createElement("option"); o.value=p.id; o.textContent=p.text;
+    if(p.id===item.projectId) o.selected=true;
+    psel.appendChild(o);
+  });
+  var r3=document.createElement("div"); r3.className="row2";
+  r3.appendChild(prios); r3.appendChild(psel);
+
+  var acts=document.createElement("div"); acts.className="acts";
+  var del=document.createElement("button"); del.className="danger"; del.textContent="Delete";
+  del.onclick=function(){
+    state.plans[day]=(state.plans[day]||[]).filter(function(i){ return i.id!==item.id; });
+    state.editId=null;
+    pushDay(day); renderTasks(); renderLogPlan();
+  };
+  var save=document.createElement("button"); save.className="save"; save.textContent="Save";
+  save.onclick=function(){
+    var newDay = din.value || "inbox";
+    item.text = tin.value.trim() || item.text;
+    item.deadline = dlin.value || null;
+    item.priority = pcur;
+    item.projectId = psel.value || null;
+    var touched={}; touched[day]=true;
+    if(newDay!==day){
+      state.plans[day]=(state.plans[day]||[]).filter(function(i){ return i.id!==item.id; });
+      itemsOf(newDay).push(item);
+      touched[newDay]=true;
+    }
+    state.editId=null;
+    Promise.all(Object.keys(touched).map(pushDay)).then(function(){ renderTasks(); renderLogPlan(); });
+    renderTasks(); renderLogPlan();
+  };
+  acts.appendChild(del); acts.appendChild(save);
+
+  box.appendChild(tin); box.appendChild(l1); box.appendChild(r2);
+  box.appendChild(l2); box.appendChild(r3); box.appendChild(acts);
+  return box;
+}
+
+function renderTasks(){
+  renderFilters();
+  var n=openTodayCount();
+  $("tab-tasks-cnt").textContent = n?("("+n+")"):"";
+  var list=$("tasks-list"); list.innerHTML="";
+  // project view: rename/delete controls
+  if(state.filter.indexOf("project:")===0){
+    var proj=projById(state.filter.slice(8));
+    if(proj){
+      var ph=document.createElement("div"); ph.className="proj-head";
+      var ren=document.createElement("button"); ren.className="ghost"; ren.textContent="✎ Rename";
+      ren.onclick=function(){
+        var name=prompt("Project name:", proj.text);
+        if(!name||!name.trim()) return;
+        proj.text=name.trim(); pushDay("projects"); renderTasks();
+      };
+      var delp=document.createElement("button"); delp.className="ghost"; delp.textContent="🗑 Delete";
+      delp.onclick=function(){
+        if(!confirm('Delete project "'+proj.text+'"? Its tasks stay (without a project).')) return;
+        state.plans["projects"]=projects().filter(function(p){ return p.id!==proj.id; });
+        state.filter="today"; pushDay("projects"); renderTasks();
+      };
+      ph.appendChild(ren); ph.appendChild(delp);
+      list.appendChild(ph);
+    }
+  }
+  buildSections().forEach(function(sec){
+    var s=document.createElement("div"); s.className="tsec";
+    var h=document.createElement("div"); h.className="tsec-h"+(sec.red?" red":"");
+    var t=document.createElement("span"); t.className="t"; t.textContent=sec.t;
+    var c=document.createElement("span"); c.className="c"; c.textContent=sec.collapsed?"":(sec.tasks.length||"");
+    h.appendChild(t); h.appendChild(c);
+    if(sec.act && sec.tasks.length){
+      var a=document.createElement("button"); a.className="act"; a.textContent=sec.act;
+      a.onclick=rescheduleOverdue;
+      h.appendChild(a);
+    }
+    s.appendChild(h);
+    var body=document.createElement("div");
+    var sorted=sec.tasks.slice().sort(function(a,b){ return (a.item.priority||9)-(b.item.priority||9); });
+    if(!sorted.length && sec.empty){
+      var e=document.createElement("p"); e.className="tempty"; e.textContent=sec.empty; body.appendChild(e);
+    }
+    sorted.forEach(function(entry){ body.appendChild(taskRow(entry, sec)); });
+    if(sec.collapsed){
+      body.classList.add("hidden");
+      h.onclick=function(){ body.classList.toggle("hidden"); };
+    }
+    s.appendChild(body);
+    list.appendChild(s);
+  });
+}
+
+function quickAdd(){
+  var raw=$("qa").value.trim(); if(!raw) return;
+  var p=parseQuick(raw);
+  if(!p.text){ toast("Add some text besides the tokens."); return; }
+  var day = p.date || (state.filter==="today"||state.filter==="upcoming" ? todayKey() : null);
+  var pf = state.filter.indexOf("project:")===0 ? state.filter.slice(8) : null;
+  var owner = day || "inbox";
+  itemsOf(owner).push({
+    id: uuid(), text: p.text, done: false,
+    priority: p.priority, projectId: p.projectId || pf, deadline: p.deadline
+  });
+  $("qa").value=""; $("qa-hint").classList.add("hidden");
+  pushDay(owner); renderTasks(); renderLogPlan();
+}
+
+/* ---------- log tab render ---------- */
+
+function renderLogPlan(){
+  var pl = $("plan-list"); pl.innerHTML="";
+  var items = state.plans[todayKey()]||[];
+  var done = items.filter(function(i){ return i.done; }).length;
+  $("plan-progress").textContent = items.length ? done+"/"+items.length : "";
+  items.forEach(function(item){
+    var row=document.createElement("div"); row.className="trow"+(item.done?" done":"");
+    row.style.padding="8px 2px";
+    var cb=document.createElement("button");
+    cb.className="tcheck"+(item.priority?" p"+item.priority:"")+(item.done?" checked":"");
+    cb.onclick=function(){ item.done=!item.done; renderLogPlan(); renderTasks(); pushDay(todayKey()); };
+    var main=document.createElement("div"); main.className="tmain";
+    var sp=document.createElement("span"); sp.className="tx"; sp.textContent=item.text;
+    main.appendChild(sp);
+    var pr=projById(item.projectId);
+    if(pr||item.deadline){
+      var meta=document.createElement("div"); meta.className="tmeta";
+      if(item.deadline){ var dl=document.createElement("span"); dl.textContent="⏰ "+fmtDay(item.deadline);
+        if(item.deadline<=todayKey()&&!item.done) dl.className="late"; meta.appendChild(dl); }
+      if(pr){ var ps=document.createElement("span");
+        var pd=document.createElement("i"); pd.className="pd"; pd.style.background=pr.color||"#7a7f8c"; pd.style.display="inline-block";
+        ps.appendChild(pd); ps.appendChild(document.createTextNode(pr.text)); meta.appendChild(ps); }
+      main.appendChild(meta);
+    }
+    var del=document.createElement("button"); del.className="more"; del.textContent="✕";
+    del.onclick=function(){ state.plans[todayKey()]=items.filter(function(i){ return i!==item; }); renderLogPlan(); renderTasks(); pushDay(todayKey()); };
+    row.appendChild(cb); row.appendChild(main); row.appendChild(del);
+    pl.appendChild(row);
+  });
+}
+
+function render(){
+  renderLogPlan();
+  // categories
+  var cats=$("cats");
+  if(!cats.children.length){
+    CATS.forEach(function(c){
+      var b=document.createElement("button"); b.style.setProperty("--c",c[2]);
+      var d=document.createElement("span"); d.className="cdot";
+      b.appendChild(d); b.appendChild(document.createTextNode(c[0]));
+      b.onclick=function(){ logCategory(c); };
+      cats.appendChild(b);
+    });
+  }
+  // timeline
+  var tl=$("timeline"); tl.innerHTML="";
+  var es=state.entries.slice().sort(function(a,b){ return new Date(b.slotStart)-new Date(a.slotStart); });
+  $("counts").textContent = es.length ? "· "+es.filter(function(e){return !e.skipped;}).length+" logged" : "";
+  if(!es.length){ tl.innerHTML='<p class="center">Nothing logged yet.</p>'; }
+  es.forEach(function(e){
+    var row=document.createElement("div"); row.className="tl-row";
+    var t=document.createElement("span"); t.className="time"; t.textContent=hm(e.slotStart)+"–"+hm(e.slotEnd);
+    var d=document.createElement("span"); d.className="cdot"; d.style.setProperty("--c", COLORS[e.category]||"#7a7f8c");
+    var lb=document.createElement("span"); lb.textContent=e.skipped?"skipped":(e.label||e.category);
+    row.appendChild(t); row.appendChild(d); row.appendChild(lb);
+    if(e.note){ var n=document.createElement("span"); n.className="note"; n.textContent=e.note; row.appendChild(n); }
+    var x=document.createElement("button"); x.className="x"; x.textContent="✕";
+    x.onclick=function(){ delEntry(e); };
+    row.appendChild(x);
+    tl.appendChild(row);
+  });
+  renderTasks();
+}
+
+function setTab(tab){
+  state.tab=tab;
+  $("tab-log").className = tab==="log"?"on":"";
+  $("tab-tasks").className = tab==="tasks"?"on":"";
+  $("pane-log").classList.toggle("hidden", tab!=="log");
+  $("pane-tasks").classList.toggle("hidden", tab!=="tasks");
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  $("tab-log").onclick=function(){ setTab("log"); };
+  $("tab-tasks").onclick=function(){ setTab("tasks"); };
+  $("plan-add").addEventListener("keydown", function(ev){
+    if(ev.key!=="Enter") return;
+    var v=$("plan-add").value.trim(); if(!v) return;
+    itemsOf(todayKey()).push({ id: uuid(), text: v, done:false });
+    $("plan-add").value=""; renderLogPlan(); renderTasks(); pushDay(todayKey());
+  });
+  $("qa").addEventListener("keydown", function(ev){ if(ev.key==="Enter") quickAdd(); });
+  $("qa").addEventListener("input", function(){
+    var p=parseQuick($("qa").value);
+    var h=$("qa-hint"); h.innerHTML="";
+    if(!p.chips.length){ h.classList.add("hidden"); return; }
+    h.classList.remove("hidden");
+    p.chips.forEach(function(c){ var s=document.createElement("span"); s.textContent=c; h.appendChild(s); });
+  });
+  $("qa-go").onclick=quickAdd;
+  $("note").addEventListener("keydown", function(ev){
+    if(ev.key==="Enter" && $("note").value.trim()) logCategory(["Other","other","#7A7F8C"]);
+  });
+  $("refresh").onclick=pull;
+  $("key-save").onclick=function(){
+    var k=$("key-input").value.trim().toLowerCase();
+    if(!/^[0-9a-f-]{36}$/.test(k)){ toast("That does not look like a sync key."); return; }
+    localStorage.setItem("focuslog-key", k); boot();
+  };
+  boot();
+});
+
+function boot(){
+  // only the function-path URL needs the trailing-slash canonicalization
+  if(location.hostname.indexOf(".supabase.co")>=0 && location.pathname.indexOf("/functions/")===0 && !location.pathname.endsWith("/")){ location.replace(location.pathname+"/"+location.search+location.hash); return; }
+  var m=(location.hash||"").match(/key=([0-9a-fA-F-]{36})/);
+  if(m){ localStorage.setItem("focuslog-key", m[1].toLowerCase()); history.replaceState(null,"",location.pathname); }
+  if(!getKey()){ $("setup").classList.remove("hidden"); $("app").classList.add("hidden"); return; }
+  $("setup").classList.add("hidden"); $("app").classList.remove("hidden");
+  render(); pull();
+  setInterval(pull, 3*60*1000);
+  document.addEventListener("visibilitychange", function(){ if(!document.hidden) pull(); });
+  initPush();
+}
+
+/* ---- push reminders ---- */
+var swReg = null;
+
+function pushSupported(){ return "serviceWorker" in navigator && "PushManager" in window && "Notification" in window; }
+function isIosNotInstalled(){
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  return ios && !standalone;
+}
+
+function b64ToBytes(b64){
+  var pad = "=".repeat((4 - b64.length % 4) % 4);
+  var raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+  var arr = new Uint8Array(raw.length);
+  for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+  return arr;
+}
+
+function setPushUI(enabled, note){
+  $("push-btn").textContent = enabled ? "Disable reminders" : "🔔 Enable reminders";
+  $("push-status").textContent = note || (enabled ? "Reminders are on for this device." : "");
+}
+
+function initPush(){
+  if(!pushSupported()){
+    if(isIosNotInstalled()){
+      $("push-btn").style.display = "none";
+      $("push-status").textContent = "First add this app to the Home Screen (Share → Add to Home Screen), then reminders become available here.";
+    } else {
+      $("push-card").classList.add("hidden");
+    }
+    return;
+  }
+  if(isIosNotInstalled()){
+    $("push-btn").style.display = "none";
+    $("push-status").textContent = "First add this app to the Home Screen (Share → Add to Home Screen), then open it from there to enable reminders.";
+    return;
+  }
+  navigator.serviceWorker.register("./sw.js").then(function(reg){
+    swReg = reg;
+    return reg.pushManager.getSubscription();
+  }).then(function(sub){
+    setPushUI(!!sub);
+  }).catch(function(e){ $("push-status").textContent = "Service worker error: " + e.message; });
+
+  $("push-btn").onclick = function(){
+    swReg.pushManager.getSubscription().then(function(existing){
+      if(existing){
+        var ep = existing.endpoint;
+        existing.unsubscribe().then(function(){
+          req("/api/unsubscribe", { method:"POST", body: JSON.stringify({ endpoint: ep }) });
+          setPushUI(false, "Reminders disabled.");
+        });
+        return;
+      }
+      Notification.requestPermission().then(function(perm){
+        if(perm !== "granted"){ setPushUI(false, "Notifications were not allowed."); return; }
+        req("/api/vapid").then(function(v){
+          return swReg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64ToBytes(v.key) });
+        }).then(function(sub){
+          return req("/api/subscribe", { method:"POST", body: JSON.stringify({
+            subscription: sub.toJSON(),
+            intervalMinutes: Number($("push-interval").value),
+            workStart: $("push-start").value || "09:00",
+            workEnd: $("push-end").value || "19:00",
+            tz: Intl.DateTimeFormat().resolvedOptions().timeZone
+          })});
+        }).then(function(){
+          setPushUI(true, "Done — this phone will ask what you did, on your schedule.");
+        }).catch(function(e){ setPushUI(false, "Failed: " + e.message); });
+      });
+    });
+  };
+}
+</script>
+</body>
+</html>
