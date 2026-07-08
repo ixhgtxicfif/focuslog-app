@@ -147,6 +147,16 @@ select.mini, input.mini { background:var(--card); border:1px solid var(--line); 
 #sh-title::placeholder { color:var(--faint); }
 #sh-desc { width:100%; background:none; border:none; outline:none; color:var(--muted); font-size:14.5px; margin-top:7px; }
 #sh-desc::placeholder { color:var(--faint); }
+.sh-subs { margin-top:10px; }
+.ssub { display:flex; align-items:center; gap:11px; padding:7px 0; }
+.ssub .sc { width:19px; height:19px; border-radius:50%; border:1.8px solid #4a5160; flex-shrink:0; position:relative; }
+.ssub.done .sc { background:#4a5160; }
+.ssub.done .sc::after { content:''; position:absolute; left:5.5px; top:2.5px; width:4px; height:8px; border:solid var(--bg); border-width:0 2px 2px 0; transform:rotate(43deg); }
+.ssub .st { flex:1; font-size:14.5px; color:var(--text); }
+.ssub.done .st { color:var(--faint); text-decoration:line-through; }
+.ssub .sx { color:var(--faint); padding:2px 6px; font-size:14px; }
+.sub-in { width:100%; background:none; border:none; outline:none; color:var(--muted); font-size:14px; margin-top:6px; }
+.sub-in::placeholder { color:var(--faint); }
 .sh-chips { display:flex; gap:8px; margin-top:18px; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding-bottom:2px; }
 .sh-chips::-webkit-scrollbar { display:none; }
 .chip {
@@ -251,10 +261,13 @@ select.mini, input.mini { background:var(--card); border:1px solid var(--line); 
     <div class="grab"></div>
     <input id="sh-title" placeholder="Название задачи" autocomplete="off">
     <input id="sh-desc" placeholder="Описание" autocomplete="off">
+    <div id="sh-subs" class="sh-subs"></div>
+    <input id="sh-sub-add" class="sub-in" placeholder="＋ Подзадача… (Enter)" autocomplete="off">
     <div class="sh-chips">
       <button class="chip" id="sh-date"><span class="ic ch-cal"></span><span id="sh-date-l">Сегодня</span><input type="date" id="sh-date-in"><span class="clr hidden" id="sh-date-x">✕</span></button>
       <button class="chip" id="sh-dl"><span class="ic ch-alarm"></span><span id="sh-dl-l">Дедлайн</span><input type="date" id="sh-dl-in"><span class="clr hidden" id="sh-dl-x">✕</span></button>
       <button class="chip" id="sh-prio"><span class="ic ch-flag"></span><span id="sh-prio-l">Приоритет</span></button>
+      <button class="chip" id="sh-rep"><span class="ic ch-rep"></span><span id="sh-rep-l">Повтор</span></button>
     </div>
     <div class="sh-bottom">
       <select id="sh-proj"></select>
@@ -285,7 +298,9 @@ var I = {
   refresh: svgIcon('<path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/>'),
   send: svgIcon('<path d="M12 19V5M5 12l7-7 7 7"/>'),
   zen: svgIcon('<circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.3 2.3 4.7-5.1"/>'),
-  folder: svgIcon('<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.2 3.9A2 2 0 0 0 7.5 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>')
+  folder: svgIcon('<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9L9.2 3.9A2 2 0 0 0 7.5 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>'),
+  repeat: svgIcon('<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>'),
+  subs: svgIcon('<path d="M9 6h11"/><path d="M9 12h11"/><path d="M9 18h11"/><path d="m3.5 5.5 1 1 2-2"/><path d="m3.5 11.5 1 1 2-2"/><path d="m3.5 17.5 1 1 2-2"/>')
 };
 function ic(name, cls){
   var s=document.createElement('span');
@@ -303,6 +318,8 @@ var CATS = [
 ];
 var COLORS = {}; CATS.forEach(function(c){ COLORS[c[1]] = c[2]; });
 var PRIO_NAMES = { 1:"П1", 2:"П2", 3:"П3" };
+var REPEAT_NAMES = { daily:"каждый день", weekdays:"по будням", weekly:"каждую неделю", monthly:"каждый месяц" };
+var REPEAT_ORDER = [null, "daily", "weekdays", "weekly", "monthly"];
 var PROJECT_COLORS = ["#e5533c","#f2a65a","#f4c95d","#4fc1a6","#58b7d4","#5b8def","#b47aea","#e86a92"];
 var API = (location.hostname.indexOf(".supabase.co") >= 0 && location.pathname.indexOf("/functions/") === 0)
   ? "."
@@ -389,12 +406,21 @@ function fmtDay(dk){
 }
 
 function parseQuick(raw){
-  var out = { text:"", date:null, deadline:null, priority:null, projectId:null };
+  var out = { text:"", date:null, deadline:null, priority:null, projectId:null, repeat:null };
   var toks = raw.trim().split(/\s+/), kept=[];
   for(var i=0;i<toks.length;i++){
     var tok=toks[i], low=tok.toLowerCase();
     var pm = low.match(/^[!pп]([1-3])$/);
     if(pm){ out.priority=+pm[1]; continue; }
+    if(low==="ежедневно"){ out.repeat="daily"; continue; }
+    if((low==="каждый"||low==="каждую"||low==="каждое") && i+1<toks.length){
+      var nx=toks[i+1].toLowerCase();
+      if(nx.indexOf("ден")===0){ out.repeat="daily"; i++; continue; }
+      if(nx.indexOf("будн")===0){ out.repeat="weekdays"; i++; continue; }
+      if(nx.indexOf("недел")===0){ out.repeat="weekly"; i++; continue; }
+      if(nx.indexOf("месяц")===0){ out.repeat="monthly"; i++; continue; }
+    }
+    if(low==="по" && (toks[i+1]||"").toLowerCase().indexOf("будн")===0){ out.repeat="weekdays"; i++; continue; }
     if(tok.charAt(0)==="#" && tok.length>1){
       var q=low.slice(1);
       var pr=projects().filter(function(p){ return p.text.toLowerCase().replace(/\s+/g,"").indexOf(q)===0; })[0];
@@ -414,6 +440,36 @@ function parseQuick(raw){
   }
   out.text = kept.join(" ");
   return out;
+}
+
+/* ---------- recurring tasks (same rules as the desktop app) ---------- */
+
+function nextRepeatDay(baseDk, repeat){
+  var tk=todayKey();
+  var base=(isDayKey(baseDk) && baseDk>tk) ? baseDk : tk;
+  var p=base.split("-"); var y=+p[0], mo=+p[1]-1, d=+p[2];
+  if(repeat==="daily") return dkOf(new Date(y,mo,d+1));
+  if(repeat==="weekdays"){ var dt=new Date(y,mo,d+1); while(dt.getDay()===0||dt.getDay()===6) dt.setDate(dt.getDate()+1); return dkOf(dt); }
+  if(repeat==="weekly") return dkOf(new Date(y,mo,d+7));
+  if(repeat==="monthly") return dkOf(new Date(y,mo+1,Math.min(d,28)));
+  return null;
+}
+
+// Completing a repeating task spawns its next occurrence (Todoist model).
+// Duplicate guard mirrors the desktop: an open copy by repeatOf or same text.
+function spawnRepeat(day, item){
+  var nd=nextRepeatDay(isDayKey(day)?day:todayKey(), item.repeat);
+  if(!nd) return null;
+  var dup=itemsOf(nd).some(function(i){ return !i.done && (i.repeatOf===item.id || i.text===item.text); });
+  if(dup) return null;
+  itemsOf(nd).push({
+    id:uuid(), text:item.text, done:false, note:item.note||null,
+    priority:item.priority||null, projectId:item.projectId||null, deadline:null,
+    repeat:item.repeat, repeatOf:item.id,
+    subs:(item.subs&&item.subs.length)?item.subs.map(function(s){ return { id:uuid(), text:s.text, done:false }; }):null,
+    goalIds:item.goalIds||null
+  });
+  return nd;
 }
 
 /* ---------- task data helpers ---------- */
@@ -480,7 +536,14 @@ function rowEl(entry, opts){
     row.classList.add("fading");
     setTimeout(function(){
       item.done=!item.done;
-      pushDay(day); render();
+      // doneAt feeds the desktop popup's «just closed this» shortcut
+      item.doneAt=item.done ? new Date().toISOString() : null;
+      var touched={}; touched[day]=true;
+      if(item.done && item.repeat){
+        var nd=spawnRepeat(day, item);
+        if(nd){ touched[nd]=true; toast("Повторится: "+fmtDay(nd)); }
+      }
+      Object.keys(touched).forEach(pushDay); render();
     }, 180);
   };
   var main=document.createElement("div"); main.className="tmain";
@@ -493,6 +556,11 @@ function rowEl(entry, opts){
   }
   if(item.deadline){
     meta.appendChild(metaDate("alarm", fmtDay(item.deadline), item.deadline<=todayKey()&&!item.done?"late":""));
+  }
+  if(item.repeat) meta.appendChild(metaDate("repeat", REPEAT_NAMES[item.repeat]||"повтор"));
+  if(item.subs && item.subs.length){
+    var sd=item.subs.filter(function(s){ return s.done; }).length;
+    meta.appendChild(metaDate("subs", sd+"/"+item.subs.length));
   }
   var pr=projById(item.projectId);
   if(pr && !opts.hideProj){
@@ -753,6 +821,25 @@ function shSetPrioChip(){
   chip.className="chip"+(sh.priority?" pr"+sh.priority:"");
   l.textContent = sh.priority ? PRIO_NAMES[sh.priority] : "Приоритет";
 }
+function shSetRepChip(){
+  var l=$("sh-rep-l"), chip=$("sh-rep");
+  chip.className="chip"+(sh.repeat?" blue":"");
+  l.textContent = sh.repeat ? REPEAT_NAMES[sh.repeat] : "Повтор";
+}
+function shRenderSubs(){
+  var box=$("sh-subs"); box.innerHTML="";
+  (sh.subs||[]).forEach(function(s){
+    var row=document.createElement("div"); row.className="ssub"+(s.done?" done":"");
+    var c=document.createElement("button"); c.className="sc";
+    c.onclick=function(){ s.done=!s.done; shRenderSubs(); };
+    var t=document.createElement("span"); t.className="st"; t.textContent=s.text;
+    t.onclick=function(){ s.done=!s.done; shRenderSubs(); };
+    var x=document.createElement("button"); x.className="sx"; x.textContent="✕";
+    x.onclick=function(){ sh.subs=sh.subs.filter(function(z){ return z.id!==s.id; }); shRenderSubs(); };
+    row.appendChild(c); row.appendChild(t); row.appendChild(x);
+    box.appendChild(row);
+  });
+}
 function shFillProjects(){
   var sel=$("sh-proj"); sel.innerHTML="";
   var o0=document.createElement("option"); o0.value=""; o0.textContent="Входящие"; sel.appendChild(o0);
@@ -770,12 +857,15 @@ function openSheet(ctx){
     date: ctx.mode==="edit" ? (ctx.day==="inbox"?null:ctx.day) : defDate,
     deadline: ctx.item ? ctx.item.deadline||null : null,
     priority: ctx.item ? ctx.item.priority||null : null,
+    repeat: ctx.item ? ctx.item.repeat||null : null,
+    subs: ctx.item && ctx.item.subs ? JSON.parse(JSON.stringify(ctx.item.subs)) : [],
     projectId: ctx.item ? ctx.item.projectId||null : (state.tab==="browse"&&state.projView ? state.projView : null)
   };
   $("sh-title").value = ctx.item ? ctx.item.text : "";
   $("sh-desc").value = ctx.item && ctx.item.note ? ctx.item.note : "";
+  $("sh-sub-add").value = "";
   $("sh-del").classList.toggle("hidden", ctx.mode!=="edit");
-  shSetDateChip(); shSetDlChip(); shSetPrioChip(); shFillProjects();
+  shSetDateChip(); shSetDlChip(); shSetPrioChip(); shSetRepChip(); shRenderSubs(); shFillProjects();
   $("sheet-bg").classList.remove("hidden");
   requestAnimationFrame(function(){ $("sheet-bg").classList.add("open"); $("sheet").classList.add("open"); });
   if(ctx.mode==="add") setTimeout(function(){ $("sh-title").focus(); }, 250);
@@ -794,13 +884,17 @@ function sheetSave(){
   if(sh.mode==="add"){
     var p=parseQuick(title);
     if(!p.text){ toast("Напиши название задачи"); return; }
-    var day = p.date || sh.date || null;
+    var rep = p.repeat || sh.repeat || null;
+    // a repeating task needs a day to repeat from — default to today
+    var day = p.date || sh.date || (rep ? todayKey() : null);
     var owner = day || "inbox";
     itemsOf(owner).push({
       id: uuid(), text: p.text, done:false, note: desc,
       priority: p.priority || sh.priority || null,
       projectId: p.projectId || sh.projectId || null,
-      deadline: p.deadline || sh.deadline || null
+      deadline: p.deadline || sh.deadline || null,
+      repeat: rep,
+      subs: sh.subs && sh.subs.length ? sh.subs : null
     });
     pushDay(owner);
   } else {
@@ -808,6 +902,8 @@ function sheetSave(){
     var item=sh.item;
     item.text=title; item.note=desc;
     item.priority=sh.priority; item.projectId=sh.projectId; item.deadline=sh.deadline;
+    item.repeat=sh.repeat;
+    item.subs=sh.subs && sh.subs.length ? sh.subs : null;
     var newDay = sh.date || "inbox";
     var touched={}; touched[sh.origDay]=true;
     if(newDay!==sh.origDay){
@@ -841,6 +937,7 @@ document.addEventListener("DOMContentLoaded", function(){
   document.querySelector(".ch-cal").innerHTML=I.cal;
   document.querySelector(".ch-alarm").innerHTML=I.alarm;
   document.querySelector(".ch-flag").innerHTML=I.flag;
+  document.querySelector(".ch-rep").innerHTML=I.repeat;
 
   document.querySelectorAll(".tabbar button").forEach(function(b){
     b.addEventListener("click", function(){ setTab(b.dataset.tab); });
@@ -856,6 +953,7 @@ document.addEventListener("DOMContentLoaded", function(){
     if(p.date){ sh.date=p.date; shSetDateChip(); }
     if(p.deadline){ sh.deadline=p.deadline; shSetDlChip(); }
     if(p.priority){ sh.priority=p.priority; shSetPrioChip(); }
+    if(p.repeat){ sh.repeat=p.repeat; shSetRepChip(); }
     if(p.projectId){ sh.projectId=p.projectId; shFillProjects(); }
   });
   $("sh-date-in").addEventListener("change", function(){ sh.date=this.value||null; shSetDateChip(); });
@@ -865,6 +963,20 @@ document.addEventListener("DOMContentLoaded", function(){
   $("sh-prio").addEventListener("click", function(){
     sh.priority = sh.priority===null?1:(sh.priority===3?null:sh.priority+1);
     shSetPrioChip();
+  });
+  $("sh-rep").addEventListener("click", function(){
+    var idx=REPEAT_ORDER.indexOf(sh.repeat);
+    sh.repeat=REPEAT_ORDER[(idx+1)%REPEAT_ORDER.length];
+    shSetRepChip();
+  });
+  $("sh-sub-add").addEventListener("keydown", function(e){
+    if(e.key!=="Enter") return;
+    e.preventDefault();
+    var v=this.value.trim();
+    if(!v) return;
+    sh.subs.push({ id:uuid(), text:v, done:false });
+    this.value="";
+    shRenderSubs();
   });
   $("sh-proj").addEventListener("change", function(){ sh.projectId=this.value||null; });
 
@@ -913,15 +1025,15 @@ function b64ToBytes(b64){
 }
 
 function setPushUI(enabled, note){
-  $("push-btn").textContent = enabled ? "Disable reminders" : "🔔 Enable reminders";
-  $("push-status").textContent = note || (enabled ? "Reminders are on for this device." : "");
+  $("push-btn").textContent = enabled ? "Выключить напоминания" : "🔔 Включить напоминания";
+  $("push-status").textContent = note || (enabled ? "Напоминания включены на этом телефоне." : "");
 }
 
 function initPush(){
   if(!pushSupported()){
     if(isIosNotInstalled()){
       $("push-btn").style.display = "none";
-      $("push-status").textContent = "First add this app to the Home Screen (Share → Add to Home Screen), then reminders become available here.";
+      $("push-status").textContent = "Сначала добавь приложение на экран «Домой» (Поделиться → На экран «Домой»), потом здесь появятся напоминания.";
     } else {
       $("push-card").classList.add("hidden");
     }
@@ -929,7 +1041,7 @@ function initPush(){
   }
   if(isIosNotInstalled()){
     $("push-btn").style.display = "none";
-    $("push-status").textContent = "First add this app to the Home Screen (Share → Add to Home Screen), then open it from there to enable reminders.";
+    $("push-status").textContent = "Сначала добавь приложение на экран «Домой» (Поделиться → На экран «Домой») и открой его оттуда — тогда напоминания станут доступны.";
     return;
   }
   navigator.serviceWorker.register("./sw.js").then(function(reg){
@@ -937,7 +1049,7 @@ function initPush(){
     return reg.pushManager.getSubscription();
   }).then(function(sub){
     setPushUI(!!sub);
-  }).catch(function(e){ $("push-status").textContent = "Service worker error: " + e.message; });
+  }).catch(function(e){ $("push-status").textContent = "Ошибка service worker: " + e.message; });
 
   $("push-btn").onclick = function(){
     swReg.pushManager.getSubscription().then(function(existing){
@@ -945,12 +1057,12 @@ function initPush(){
         var ep = existing.endpoint;
         existing.unsubscribe().then(function(){
           req("/api/unsubscribe", { method:"POST", body: JSON.stringify({ endpoint: ep }) });
-          setPushUI(false, "Reminders disabled.");
+          setPushUI(false, "Напоминания выключены.");
         });
         return;
       }
       Notification.requestPermission().then(function(perm){
-        if(perm !== "granted"){ setPushUI(false, "Notifications were not allowed."); return; }
+        if(perm !== "granted"){ setPushUI(false, "Уведомления не разрешены — включи их в настройках iOS для Focus Log."); return; }
         req("/api/vapid").then(function(v){
           return swReg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: b64ToBytes(v.key) });
         }).then(function(sub){
@@ -962,8 +1074,8 @@ function initPush(){
             tz: Intl.DateTimeFormat().resolvedOptions().timeZone
           })});
         }).then(function(){
-          setPushUI(true, "Done — this phone will ask what you did, on your schedule.");
-        }).catch(function(e){ setPushUI(false, "Failed: " + e.message); });
+          setPushUI(true, "Готово — телефон будет спрашивать «что делал?» по твоему графику.");
+        }).catch(function(e){ setPushUI(false, "Не получилось: " + e.message); });
       });
     });
   };
