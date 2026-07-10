@@ -22,12 +22,12 @@ svg { display:block; }
 .ic { display:inline-flex; flex-shrink:0; }
 
 /* ---- chrome ---- */
-main { padding:calc(env(safe-area-inset-top) + 6px) 18px 130px; }
+main { padding:calc(env(safe-area-inset-top) + 6px) 16px 120px; }
 .topbar { display:flex; align-items:center; gap:12px; padding:10px 0 0; min-height:30px; }
 .topbar .status { margin-left:auto; color:var(--faint); font-size:12px; }
 .topbar .rf { color:var(--faint); padding:4px; }
 .topbar .rf svg { width:16px; height:16px; }
-.big-title { font-size:30px; font-weight:800; letter-spacing:-.03em; margin:10px 0 8px; display:flex; align-items:center; gap:12px; }
+.big-title { font-size:25px; font-weight:800; letter-spacing:-.02em; margin:8px 0 4px; display:flex; align-items:center; gap:10px; }
 .big-title .pdot { width:13px; height:13px; border-radius:5px; flex-shrink:0; }
 .big-title .tools { margin-left:auto; display:flex; gap:6px; }
 .big-title .tools button { color:var(--faint); padding:6px; }
@@ -64,15 +64,16 @@ main { padding:calc(env(safe-area-inset-top) + 6px) 18px 130px; }
 .fab:active { transform:scale(.94); }
 
 /* ---- sections & task rows ---- */
-.sec-h { display:flex; align-items:baseline; gap:9px; margin:22px 0 2px; }
-.sec-h .t { font-size:14.5px; font-weight:700; letter-spacing:-.01em; }
+.sec-h { display:flex; align-items:baseline; gap:9px; margin:14px 0 1px; }
+.sec-h .t { font-size:14px; font-weight:700; letter-spacing:-.01em; }
 .sec-h.red .t { color:var(--p1); }
 .sec-h .c { color:var(--faint); font-size:12.5px; flex:1; }
-.sec-h .act { color:var(--p1); font-size:14px; font-weight:600; padding:2px; }
-.trow { display:flex; align-items:flex-start; gap:14px; padding:14px 0; border-bottom:1px solid var(--hair); transition:opacity .18s, transform .18s; }
+.sec-h .act { color:var(--p1); font-size:13.5px; font-weight:600; padding:2px; }
+.sec-h .act + .act { margin-left:10px; }
+.trow { display:flex; align-items:flex-start; gap:12px; padding:9.5px 0; border-bottom:1px solid var(--hair); transition:opacity .18s, transform .18s; }
 .trow.fading { opacity:0; transform:translateX(12px); }
 .tcheck {
-  width:22px; height:22px; border-radius:50%; flex-shrink:0; margin-top:1px;
+  width:20px; height:20px; border-radius:50%; flex-shrink:0; margin-top:1px;
   border:1.8px solid #4a5160; position:relative; transition:background .15s, border-color .15s;
 }
 .tcheck.p1 { border-color:var(--p1); background:rgba(229,83,60,.13); }
@@ -80,24 +81,24 @@ main { padding:calc(env(safe-area-inset-top) + 6px) 18px 130px; }
 .tcheck.p3 { border-color:var(--p3); background:rgba(91,141,239,.13); }
 .tcheck.checked { background:#4a5160; border-color:#4a5160; }
 .tcheck.checked::after {
-  content:''; position:absolute; left:6.5px; top:3px;
+  content:''; position:absolute; left:5.5px; top:2.5px;
   width:5px; height:9px;
   border:solid var(--bg); border-width:0 2px 2px 0; transform:rotate(43deg);
 }
 .tmain { flex:1; min-width:0; }
-.tx { font-size:15.5px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; letter-spacing:-.005em; }
+.tx { font-size:15px; line-height:1.35; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; letter-spacing:-.005em; }
 .trow.done .tx { color:var(--faint); text-decoration:line-through; }
-.desc { color:var(--muted); font-size:13px; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.meta { display:flex; align-items:center; gap:14px; margin-top:5px; font-size:12.5px; color:var(--faint); }
-.meta .d { display:inline-flex; align-items:center; gap:4.5px; }
-.meta .d svg { width:12.5px; height:12.5px; }
+.desc { color:var(--muted); font-size:12.5px; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta { display:flex; align-items:center; gap:10px; margin-top:3px; font-size:12px; color:var(--faint); }
+.meta .d { display:inline-flex; align-items:center; gap:4px; }
+.meta .d svg { width:12px; height:12px; }
 .meta .d.late { color:var(--p1); }
 .meta .d.today { color:var(--green); }
-.meta .proj { margin-left:auto; display:inline-flex; align-items:center; gap:6px; color:var(--faint); }
-.meta .proj i { width:8px; height:8px; border-radius:3px; font-style:normal; }
-.tempty { text-align:center; color:var(--faint); padding:38px 20px; font-size:14.5px; line-height:1.6; }
-.tempty .e { display:flex; justify-content:center; margin-bottom:14px; color:#39404e; }
-.tempty .e svg { width:46px; height:46px; }
+.meta .proj { margin-left:auto; display:inline-flex; align-items:center; gap:5px; color:var(--faint); max-width:45%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.meta .proj i { width:7px; height:7px; border-radius:2.5px; font-style:normal; flex-shrink:0; }
+.tempty { text-align:center; color:var(--faint); padding:22px 16px; font-size:14px; line-height:1.55; }
+.tempty .e { display:flex; justify-content:center; margin-bottom:10px; color:#39404e; }
+.tempty .e svg { width:38px; height:38px; }
 
 /* ---- browse (projects) ---- */
 .prow { display:flex; align-items:center; gap:14px; padding:15px 2px; border-bottom:1px solid var(--hair); }
@@ -112,12 +113,40 @@ main { padding:calc(env(safe-area-inset-top) + 6px) 18px 130px; }
 .prow.add .pic { color:var(--accent); }
 
 /* ---- log tab ---- */
-.card { background:var(--panel); border:1px solid rgba(255,255,255,.05); border-radius:16px; padding:15px; margin:12px 0; }
+.card { background:var(--panel); border:1px solid rgba(255,255,255,.05); border-radius:14px; padding:13px 14px; margin:10px 0; }
 .card h2 { font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); margin-bottom:10px; font-weight:600; }
-.grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-.grid button { display:flex; align-items:center; gap:9px; padding:12px; background:var(--card); border:1px solid rgba(255,255,255,.04); border-radius:12px; color:var(--text); font-size:13.5px; text-align:left; }
-.grid button:active { border-color:var(--accent); }
-.grid .cdot { width:9px; height:9px; border-radius:3.5px; background:var(--c); flex-shrink:0; }
+.card-toggle { display:flex; width:100%; align-items:center; justify-content:space-between; text-align:left; }
+.card-toggle h2 { margin:0; }
+.card-toggle .chv { color:var(--faint); font-size:11px; transition:transform .15s; }
+.card-toggle.open .chv { transform:rotate(90deg); }
+.hint { color:var(--faint); font-size:12.5px; line-height:1.5; margin:10px 0 2px; }
+/* compact category pills — one line each, wrap freely, no giant grid cells */
+.cat-chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+.cat-chips button { display:inline-flex; align-items:center; gap:7px; padding:8px 12px; background:var(--card); border:1px solid rgba(255,255,255,.05); border-radius:18px; color:var(--text); font-size:13px; white-space:nowrap; }
+.cat-chips button:active { border-color:var(--accent); }
+.cat-chips .cdot { width:8px; height:8px; border-radius:3px; background:var(--c); flex-shrink:0; }
+/* today's meetings: compact agenda card, tap opens the full sheet */
+.cal-card { background:var(--panel); border:1px solid rgba(255,255,255,.05); border-radius:14px; padding:11px 14px; margin:10px 0 4px; width:100%; text-align:left; display:block; }
+.cal-card .ch { display:flex; align-items:baseline; gap:8px; margin-bottom:4px; }
+.cal-card .ch .t { font-size:11.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); font-weight:600; }
+.cal-card .ch .n { color:var(--faint); font-size:12px; flex:1; }
+.cal-card .ch .chv { color:var(--faint); font-size:11px; }
+.ev-line { display:flex; align-items:center; gap:8px; padding:4.5px 0; font-size:13.5px; min-width:0; }
+.ev-line .tm { color:var(--faint); font-size:12px; font-variant-numeric:tabular-nums; flex-shrink:0; width:82px; }
+.ev-line .cd { width:8px; height:8px; border-radius:3px; flex-shrink:0; }
+.ev-line .tt { flex:1; min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.ev-line.past { opacity:.45; }
+.ev-line.now .tt { color:var(--green); font-weight:600; }
+.ev-line .join { color:var(--accent); font-size:12.5px; font-weight:600; flex-shrink:0; padding:2px 4px; }
+.ev-more { color:var(--faint); font-size:12px; padding:4px 0 0 90px; }
+/* full-day agenda bottom sheet */
+.cal-sheet .ev-line { padding:9px 0; border-bottom:1px solid var(--hair); font-size:14.5px; }
+.cal-sheet .ev-line:last-child { border-bottom:none; }
+.cal-sheet .ev-line .tm { width:92px; font-size:12.5px; }
+.cal-sheet .cal-name { color:var(--faint); font-size:11.5px; display:block; }
+.cal-sheet h3 { font-size:17px; font-weight:700; margin-bottom:8px; }
+.allday-chip { display:inline-flex; align-items:center; gap:6px; background:var(--card); border-radius:10px; padding:5px 10px; font-size:12.5px; color:var(--muted); margin:0 6px 8px 0; }
+.allday-chip i { width:7px; height:7px; border-radius:2.5px; }
 .in { width:100%; padding:12px 14px; background:var(--card); border:1px solid rgba(255,255,255,.05); border-radius:12px; color:var(--text); font-size:15px; outline:none; margin-top:8px; }
 .in:focus { border-color:var(--accent); }
 .tl-row { display:flex; align-items:baseline; gap:9px; padding:8px 2px; border-bottom:1px solid var(--hair); font-size:13.5px; }
@@ -219,9 +248,12 @@ select.mini, input.mini { background:var(--card); border:1px solid var(--line); 
         <div id="plan-list"></div>
       </div>
       <div class="card">
-        <h2>Что делал последние 15 минут?</h2>
-        <div class="grid" id="cats"></div>
-        <input type="text" class="in" id="note" placeholder="Деталь (необязательно), затем категория" enterkeyhint="send">
+        <button class="card-toggle" id="log-toggle"><h2>＋ Записать 15-минутку</h2><span class="chv">▸</span></button>
+        <div id="log-body" class="hidden">
+          <p class="hint">Отметь, чем занят — по желанию, в любой момент. Напоминания настраиваются ниже.</p>
+          <div class="cat-chips" id="cats"></div>
+          <input type="text" class="in" id="note" placeholder="Деталь (необязательно), затем категория" enterkeyhint="send">
+        </div>
       </div>
       <div class="card">
         <h2>Сегодня <span id="counts" style="color:var(--faint);text-transform:none;letter-spacing:0"></span></h2>
@@ -572,8 +604,10 @@ function dayTasks(dk, pf, all){
   return (state.plans[dk]||[]).filter(function(i){ return (!pf||i.projectId===pf)&&(all||!i.done); })
     .map(function(it){ return { day:dk, item:it }; });
 }
+// badge = only TODAY's open tasks (a pile of stale overdue said nothing);
+// overdue shows as a red "!" when today itself is clear
 function openTodayCount(){
-  var n=overdueList(null).length;
+  var n=0;
   (state.plans[todayKey()]||[]).forEach(function(i){ if(!i.done) n++; });
   return n;
 }
@@ -690,10 +724,119 @@ function bigTitle(text, dotColor){
   return h;
 }
 
+/* ---------- today's meetings (published by the desktop on each sync) ---------- */
+
+function hmMs(ms){ var d=new Date(ms); return pad(d.getHours())+":"+pad(d.getMinutes()); }
+function todayEvents(){
+  var tk=todayKey();
+  return (state.plans["calendar"]||[]).filter(function(e){
+    if(!e || !e.start) return false;
+    var sd=dkOf(new Date(e.start));
+    if(e.allDay) return sd<=tk && dkOf(new Date(e.end||e.start))>=tk;
+    return sd===tk;
+  }).sort(function(a,b){ return a.start-b.start; });
+}
+
+function evLine(e, full){
+  var now=Date.now();
+  var row=document.createElement("div");
+  var isNow=!e.allDay && e.start<=now && (e.end||e.start)>=now;
+  var isPast=!e.allDay && (e.end||e.start)<now;
+  row.className="ev-line"+(isPast?" past":"")+(isNow?" now":"");
+  var tm=document.createElement("span"); tm.className="tm";
+  tm.textContent=e.allDay?"весь день":(hmMs(e.start)+"–"+hmMs(e.end||e.start));
+  var cd=document.createElement("span"); cd.className="cd"; cd.style.background=e.color||"#5b8def";
+  var tt=document.createElement("span"); tt.className="tt";
+  tt.textContent=e.title||"(без названия)";
+  if(full && e.calendar){
+    var cn=document.createElement("span"); cn.className="cal-name"; cn.textContent=e.calendar;
+    var wrap=document.createElement("span"); wrap.className="tt"; wrap.style.whiteSpace="normal";
+    wrap.appendChild(document.createTextNode(e.title||"(без названия)")); wrap.appendChild(cn);
+    tt=wrap;
+  }
+  row.appendChild(tm); row.appendChild(cd); row.appendChild(tt);
+  if(e.link && (isNow || (!isPast && !e.allDay))){
+    var j=document.createElement("button"); j.className="join"; j.textContent="Войти";
+    j.onclick=function(ev){ ev.stopPropagation(); window.open(e.link, "_blank"); };
+    row.appendChild(j);
+  }
+  return row;
+}
+
+function openCalSheet(){
+  var evs=todayEvents();
+  var bg=document.createElement("div"); bg.className="sheet-bg open"; bg.style.opacity="1";
+  var sh=document.createElement("div"); sh.className="sheet cal-sheet open";
+  var close=function(){ bg.remove(); sh.remove(); };
+  bg.onclick=close;
+  sh.innerHTML='<div class="grab"></div>';
+  var h=document.createElement("h3");
+  h.textContent="Встречи · "+new Date().toLocaleDateString("ru-RU",{ weekday:"long", day:"numeric", month:"long" });
+  sh.appendChild(h);
+  var box=document.createElement("div"); box.style.maxHeight="60vh"; box.style.overflowY="auto";
+  evs.filter(function(e){ return e.allDay; }).forEach(function(e){
+    var c=document.createElement("span"); c.className="allday-chip";
+    var i=document.createElement("i"); i.style.background=e.color||"#5b8def";
+    c.appendChild(i); c.appendChild(document.createTextNode(e.title||""));
+    box.appendChild(c);
+  });
+  evs.filter(function(e){ return !e.allDay; }).forEach(function(e){ box.appendChild(evLine(e, true)); });
+  if(!evs.length){ box.innerHTML='<p class="center">Сегодня встреч нет.</p>'; }
+  sh.appendChild(box);
+  document.body.appendChild(bg); document.body.appendChild(sh);
+}
+
+function calendarCard(){
+  var evs=todayEvents();
+  if(!evs.length) return document.createDocumentFragment();
+  var now=Date.now();
+  var timed=evs.filter(function(e){ return !e.allDay; });
+  var upcoming=timed.filter(function(e){ return (e.end||e.start)>=now; });
+  var card=document.createElement("button"); card.className="cal-card";
+  var head=document.createElement("div"); head.className="ch";
+  var t=document.createElement("span"); t.className="t"; t.textContent="Встречи";
+  var n=document.createElement("span"); n.className="n"; n.textContent=String(evs.length);
+  var chv=document.createElement("span"); chv.className="chv"; chv.textContent="▸ все";
+  head.appendChild(t); head.appendChild(n); head.appendChild(chv);
+  card.appendChild(head);
+  // show what matters NOW: the next few meetings; if the day is over — the last one
+  var show=(upcoming.length?upcoming:timed.slice(-1)).slice(0,3);
+  if(!show.length && evs.length){ // only all-day events
+    var c=document.createElement("span"); c.className="allday-chip";
+    var i=document.createElement("i"); i.style.background=evs[0].color||"#5b8def";
+    c.appendChild(i); c.appendChild(document.createTextNode(evs[0].title||"весь день"));
+    card.appendChild(c);
+  }
+  show.forEach(function(e){ card.appendChild(evLine(e, false)); });
+  var rest=timed.length-show.length;
+  if(rest>0){ var m=document.createElement("div"); m.className="ev-more"; m.textContent="+"+rest+" ещё за день"; card.appendChild(m); }
+  card.onclick=function(){ openCalSheet(); };
+  return card;
+}
+
 function renderToday(view){
   view.appendChild(bigTitle("Сегодня"));
+  view.appendChild(calendarCard());
   var over=overdueList(null);
-  if(over.length) view.appendChild(secEl("Просрочено", over, { red:true, act:"Перенести → сегодня", onAct:function(){ rescheduleOverdue(null); }, showDate:true }));
+  if(over.length){
+    // a pile of stale tasks must not bury today: collapsed to one line by default
+    var open = state.overdueOpen || over.length<=3;
+    var h=document.createElement("div"); h.className="sec-h red";
+    var t=document.createElement("span"); t.className="t"; t.textContent="Просрочено";
+    var c=document.createElement("span"); c.className="c"; c.textContent=String(over.length);
+    h.appendChild(t); h.appendChild(c);
+    var mv=document.createElement("button"); mv.className="act"; mv.textContent="→ сегодня";
+    mv.onclick=function(){ rescheduleOverdue(null); };
+    h.appendChild(mv);
+    if(over.length>3){
+      var tg=document.createElement("button"); tg.className="act"; tg.style.color="var(--faint)";
+      tg.textContent=open?"Свернуть":"Показать";
+      tg.onclick=function(){ state.overdueOpen=!state.overdueOpen; render(); };
+      h.appendChild(tg);
+    }
+    view.appendChild(h);
+    if(open) view.appendChild(secEl("", over, { showDate:true }));
+  }
   var todays=dayTasks(todayKey(), null, true);
   view.appendChild(secEl(over.length?"Сегодня":"", todays, { empty: over.length?"На сегодня ничего не запланировано.":"Всё чисто. Наслаждайся фокусом.", emptyIcon:"zen" }));
 }
@@ -858,7 +1001,9 @@ function delEntry(e){
 function render(){
   var badge=$("badge-today");
   var n=openTodayCount();
-  badge.textContent=n; badge.classList.toggle("hidden", !n);
+  var ov=overdueList(null).length;
+  badge.textContent = n ? (n>20?"20+":n) : (ov?"!":"");
+  badge.classList.toggle("hidden", !n && !ov);
   document.querySelectorAll(".tabbar button").forEach(function(b){
     b.classList.toggle("on", b.dataset.tab===state.tab);
   });
@@ -1068,6 +1213,18 @@ document.addEventListener("DOMContentLoaded", function(){
     if(ev.key==="Enter" && $("note").value.trim()) logCategory(["Другое","other","#7A7F8C"]);
   });
   $("refresh").onclick=function(){ pull(true); };
+  // quick-log card: collapsed by default, state survives reloads
+  var logOpen = localStorage.getItem("fl-log-open")==="1";
+  var syncLogCard = function(){
+    $("log-body").classList.toggle("hidden", !logOpen);
+    $("log-toggle").classList.toggle("open", logOpen);
+  };
+  $("log-toggle").onclick=function(){
+    logOpen=!logOpen;
+    localStorage.setItem("fl-log-open", logOpen?"1":"0");
+    syncLogCard();
+  };
+  syncLogCard();
   // iOS Shortcut card: quick-task endpoint + the key, copyable
   var qtUrl = (API===".")
     ? "https://nmpomxomlhxyywgbgpfd.supabase.co/functions/v1/focuslog/api/quick-task"
