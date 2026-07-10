@@ -202,7 +202,7 @@ select.mini, input.mini { background:var(--card); border:1px solid var(--line); 
   <div class="card">
     <h2>Подключение</h2>
     <p>Вставьте ключ синхронизации из приложения на компьютере (Settings → Sync → Copy phone link, или сам ключ).</p>
-    <input type="text" class="in" id="key-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocapitalize="off" autocorrect="off">
+    <input type="text" class="in" id="key-input" placeholder="ключ или ссылка с ?key=…" autocapitalize="off" autocorrect="off">
     <button class="primary" id="key-save">Подключить</button>
   </div>
 </div>
@@ -1080,9 +1080,11 @@ document.addEventListener("DOMContentLoaded", function(){
   $("sc-copy-url").onclick=function(){ navigator.clipboard.writeText(qtUrl).then(function(){ toast("URL скопирован"); }); };
   $("sc-copy-key").onclick=function(){ navigator.clipboard.writeText(getKey()||"").then(function(){ toast("Ключ скопирован"); }); };
   $("key-save").onclick=function(){
-    var k=$("key-input").value.trim().toLowerCase();
-    if(!/^[0-9a-f-]{36}$/.test(k)){ toast("Не похоже на ключ синхронизации."); return; }
-    localStorage.setItem("focuslog-key", k); boot();
+    // accept the bare key OR the whole phone link with ?key=… pasted as-is
+    var m=($("key-input").value||"").toLowerCase()
+      .match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/);
+    if(!m){ toast("Вставь ключ синхронизации или целиком ссылку с ?key=…"); return; }
+    localStorage.setItem("focuslog-key", m[0]); boot();
   };
   boot();
 });
