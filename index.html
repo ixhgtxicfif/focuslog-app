@@ -243,6 +243,18 @@ select.mini, input.mini { background:var(--card); border:1px solid var(--line); 
         <button class="primary" id="push-btn">Включить напоминания</button>
         <p class="center" id="push-status"></p>
       </div>
+      <div class="card" id="shortcut-card">
+        <h2>Отправка из «Поделиться» (iOS)</h2>
+        <p style="color:var(--muted);font-size:13.5px;line-height:1.55">Одна быстрая команда — и любой текст или ссылку можно кидать в Focus Log прямо из share sheet. Задача появится во «Входящих».</p>
+        <button class="primary" id="sc-toggle">Показать инструкцию</button>
+        <div id="sc-steps" class="hidden" style="color:var(--muted);font-size:13.5px;line-height:1.65;margin-top:12px">
+          <p>1. Открой приложение <b>Команды</b> → «+» → добавь действие <b>«Получить содержимое URL»</b>.</p>
+          <p style="margin-top:6px">2. URL: <span id="sc-url" style="word-break:break-all;color:var(--text);font-size:12.5px"></span><br><button id="sc-copy-url" style="color:var(--accent);padding:4px 0">Скопировать URL</button></p>
+          <p style="margin-top:6px">3. Метод — <b>POST</b>. В «Заголовки» добавь <b>x-sync-key</b> со своим ключом.<br><button id="sc-copy-key" style="color:var(--accent);padding:4px 0">Скопировать ключ</button></p>
+          <p style="margin-top:6px">4. «Текст запроса» — <b>JSON</b>: поле <b>text</b> = переменная «Ввод быстрой команды» (как текст).</p>
+          <p style="margin-top:6px">5. В настройках команды включи <b>«В окне “Поделиться”»</b> и назови её «В Focus Log».</p>
+        </div>
+      </div>
     </div>
   </main>
 
@@ -350,28 +362,99 @@ function req(path, opts){
   });
 }
 
-function pull(){
+/* ---------- local cache + offline outbox ----------
+   The app must open INSTANTLY and work offline: state is mirrored to
+   localStorage after every change, and every push goes through a queue that
+   survives reloads — a failed request is "ещё не ушло", never data loss. */
+
+function loadCache(){
+  try {
+    var c = JSON.parse(localStorage.getItem("fl-cache")||"null");
+    if(c && c.plans){ state.entries = c.entries||[]; state.plans = c.plans||{}; return true; }
+  } catch(e){}
+  return false;
+}
+function saveCache(){
+  try { localStorage.setItem("fl-cache", JSON.stringify({ entries: state.entries, plans: state.plans })); } catch(e){}
+}
+function outboxQ(){ try { return JSON.parse(localStorage.getItem("fl-outbox")||"[]"); } catch(e){ return []; } }
+function saveOutbox(q){ try { localStorage.setItem("fl-outbox", JSON.stringify(q.slice(-300))); } catch(e){} }
+
+var flushing = false;
+function flushOutbox(){
+  var q = outboxQ();
+  if(!q.length || flushing) return Promise.resolve();
+  flushing = true;
+  var body = { entries:[], plans:[] };
+  var seenDay = {};
+  q.forEach(function(x){
+    if(x.t==="e") body.entries = body.entries.concat(x.entries||[]);
+    // plans send the CURRENT items for the day (whole-file last-write-wins)
+    else if(x.t==="p" && !seenDay[x.day]){ seenDay[x.day]=1; body.plans.push({ day:x.day, items: state.plans[x.day]||[] }); }
+  });
+  return req("/api/push", { method:"POST", body: JSON.stringify(body) }).then(function(){
+    saveOutbox(outboxQ().slice(q.length)); // new items queued meanwhile stay
+    flushing = false;
+  }, function(err){ flushing = false; throw err; });
+}
+
+function pull(userTriggered){
   $("status").textContent = "синк…";
-  return req("/api/pull").then(function(res){
+  return flushOutbox().catch(function(){}).then(function(){
+    var since = localStorage.getItem("fl-since") || "1970-01-01T00:00:00Z";
+    return req("/api/pull?since="+encodeURIComponent(since));
+  }).then(function(res){
     var day = todayKey();
-    state.entries = res.entries.filter(function(e){ return e.day===day && !e.deleted; });
-    state.plans = {};
-    res.plans.forEach(function(p){ state.plans[p.day] = p.items || []; });
+    // merge remote entries by id over local ones (unsent local rows survive)
+    var byId = {};
+    state.entries.forEach(function(e){ if(e.day===day && !e.deleted) byId[e.id]=e; });
+    (res.entries||[]).forEach(function(e){
+      if(e.day!==day) return;
+      if(e.deleted) delete byId[e.id]; else byId[e.id]=e;
+    });
+    state.entries = Object.keys(byId).map(function(k){ return byId[k]; });
+    (res.plans||[]).forEach(function(p){ state.plans[p.day] = p.items || []; });
+    localStorage.setItem("fl-since", res.now);
+    saveCache();
     $("status").textContent = "✓ " + hm(new Date().toISOString());
     render();
-  }).catch(function(e){ $("status").textContent = "офлайн"; toast("Ошибка синка: "+e.message); });
+  }).catch(function(e){
+    // offline is a normal state, not an error — the cached data stays usable
+    $("status").textContent = "офлайн";
+    if(userTriggered) toast("Нет связи с облаком: "+e.message);
+  });
 }
 
 function pushEntries(entries){
-  return req("/api/push", { method:"POST", body: JSON.stringify({ entries: entries }) });
+  var q = outboxQ(); q.push({ t:"e", entries: entries }); saveOutbox(q);
+  saveCache();
+  return flushOutbox();
 }
 function itemsOf(day){ if(!state.plans[day]) state.plans[day]=[]; return state.plans[day]; }
 function pushDay(day){
-  return req("/api/push", { method:"POST", body: JSON.stringify({ plans:[{ day: day, items: state.plans[day]||[] }] }) })
-    .catch(function(err){ toast("Не ушло в облако: "+err.message); });
+  var q = outboxQ().filter(function(x){ return !(x.t==="p" && x.day===day); });
+  q.push({ t:"p", day: day }); saveOutbox(q);
+  saveCache();
+  return flushOutbox()
+    .catch(function(){ $("status").textContent = "офлайн — изменения сохранены на телефоне"; });
 }
 function projects(){ return state.plans["projects"]||[]; }
 function projById(id){ return projects().filter(function(p){ return p.id===id; })[0]||null; }
+// desktop subprojects: a project's own projectId points at its parent
+function projParent(p){
+  if(!p.projectId) return null;
+  var par = projById(p.projectId);
+  return (par && !par.projectId) ? par.id : null;
+}
+function orderedProjects(){
+  var out=[];
+  projects().forEach(function(p){
+    if(projParent(p)) return;
+    out.push(p);
+    projects().forEach(function(c){ if(projParent(c)===p.id) out.push(c); });
+  });
+  return out;
+}
 
 /* ---------- dates & quick-add parsing ---------- */
 
@@ -685,8 +768,9 @@ function renderBrowse(view){
   inboxRow.appendChild(inm); inboxRow.appendChild(inc); inboxRow.appendChild(ic("chev","chev"));
   inboxRow.onclick=function(){ setTab("inbox"); };
   list.appendChild(inboxRow);
-  projects().forEach(function(p){
+  orderedProjects().forEach(function(p){
     var r=document.createElement("div"); r.className="prow";
+    if(projParent(p)) r.style.paddingLeft="34px";
     var d=document.createElement("span"); d.className="pdot"; d.style.background=p.color||"#7a7f8c";
     var nm=document.createElement("span"); nm.className="nm"; nm.textContent=p.text;
     var cn=document.createElement("span"); cn.className="cnt"; cn.textContent=projOpenCount(p.id)||"";
@@ -762,13 +846,13 @@ function logCategory(cat){
   };
   state.entries.push(e); $("note").value=""; renderLog();
   pushEntries([e]).then(function(){ toast("Записано: "+cat[0]); })
-    .catch(function(err){ toast("Не ушло: "+err.message); });
+    .catch(function(){ toast("Записано (уйдёт в облако при сети): "+cat[0]); });
 }
 function delEntry(e){
   e.deleted = true;
   state.entries = state.entries.filter(function(x){ return x.id!==e.id; });
   renderLog();
-  pushEntries([e]).catch(function(err){ toast("Не ушло: "+err.message); });
+  pushEntries([e]).catch(function(){ /* queued — retries on next sync */ });
 }
 
 function render(){
@@ -843,8 +927,8 @@ function shRenderSubs(){
 function shFillProjects(){
   var sel=$("sh-proj"); sel.innerHTML="";
   var o0=document.createElement("option"); o0.value=""; o0.textContent="Входящие"; sel.appendChild(o0);
-  projects().forEach(function(p){
-    var o=document.createElement("option"); o.value=p.id; o.textContent=p.text;
+  orderedProjects().forEach(function(p){
+    var o=document.createElement("option"); o.value=p.id; o.textContent=(projParent(p)?"— ":"")+p.text;
     sel.appendChild(o);
   });
   sel.value = sh.projectId||"";
@@ -983,7 +1067,18 @@ document.addEventListener("DOMContentLoaded", function(){
   $("note").addEventListener("keydown", function(ev){
     if(ev.key==="Enter" && $("note").value.trim()) logCategory(["Другое","other","#7A7F8C"]);
   });
-  $("refresh").onclick=pull;
+  $("refresh").onclick=function(){ pull(true); };
+  // iOS Shortcut card: quick-task endpoint + the key, copyable
+  var qtUrl = (API===".")
+    ? "https://nmpomxomlhxyywgbgpfd.supabase.co/functions/v1/focuslog/api/quick-task"
+    : API + "/api/quick-task";
+  $("sc-toggle").onclick=function(){
+    $("sc-url").textContent = qtUrl;
+    $("sc-steps").classList.toggle("hidden");
+    $("sc-toggle").textContent = $("sc-steps").classList.contains("hidden") ? "Показать инструкцию" : "Скрыть инструкцию";
+  };
+  $("sc-copy-url").onclick=function(){ navigator.clipboard.writeText(qtUrl).then(function(){ toast("URL скопирован"); }); };
+  $("sc-copy-key").onclick=function(){ navigator.clipboard.writeText(getKey()||"").then(function(){ toast("Ключ скопирован"); }); };
   $("key-save").onclick=function(){
     var k=$("key-input").value.trim().toLowerCase();
     if(!/^[0-9a-f-]{36}$/.test(k)){ toast("Не похоже на ключ синхронизации."); return; }
@@ -1000,9 +1095,12 @@ function boot(){
   if(m){ localStorage.setItem("focuslog-key", m[1].toLowerCase()); history.replaceState(null,"",location.pathname); }
   if(!getKey()){ $("setup").classList.remove("hidden"); $("app").classList.add("hidden"); return; }
   $("setup").classList.add("hidden"); $("app").classList.remove("hidden");
+  // paint instantly from the local cache; the network only refreshes it
+  loadCache();
   render(); pull();
-  setInterval(pull, 3*60*1000);
+  setInterval(function(){ pull(); }, 3*60*1000);
   document.addEventListener("visibilitychange", function(){ if(!document.hidden) pull(); });
+  window.addEventListener("online", function(){ pull(); });
   initPush();
 }
 
