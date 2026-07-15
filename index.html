@@ -30,6 +30,13 @@ main { padding:calc(env(safe-area-inset-top) + 6px) 16px 120px; }
 .topbar .wk.on { border-color:var(--green); color:var(--green); }
 .topbar .wk svg { width:12px; height:12px; }
 .topbar .wk.pending { opacity:.6; }
+/* «что там?» после паузы — одно касание, и день останется полным */
+#wk-kinds { display:flex; gap:7px; flex-wrap:wrap; padding:8px 0 2px; }
+#wk-kinds button {
+  background:var(--card); border:1px solid var(--line); border-radius:100px;
+  color:var(--text); font-size:12.5px; padding:6px 12px;
+}
+#wk-kinds button.dim { color:var(--faint); border-style:dashed; }
 .topbar .rf { color:var(--faint); padding:4px; }
 .topbar .rf svg { width:16px; height:16px; }
 .big-title { font-size:25px; font-weight:800; letter-spacing:-.02em; margin:8px 0 4px; display:flex; align-items:center; gap:10px; }
@@ -1178,6 +1185,7 @@ function paintWork(){
     if(active === (workPending.mode==="on")) workPending=null;
     else active = workPending.mode==="on";
   }
+  if(active) hideKindRow();
   b.classList.remove("hidden");
   b.classList.toggle("on", active);
   b.classList.toggle("pending", !!workPending);
@@ -1185,16 +1193,49 @@ function paintWork(){
   b.title = active ? "Попапы на компе активны — нажми, когда отходишь"
                    : "Попапы на компе молчат — нажми, когда садишься работать";
 }
-function toggleWork(){
-  var b=$("wk-btn");
-  var mode = b.classList.contains("on") ? "off" : "on";
+function sendWorkCmd(mode, kind){
   workPending = { mode: mode, at: new Date().toISOString() };
-  state.plans["workcmd"] = [{ id:"workcmd", mode: mode, at: workPending.at }];
+  var item = { id:"workcmd", mode: mode, at: workPending.at };
+  if(kind) item.kind = kind;
+  state.plans["workcmd"] = [item];
   pushDay("workcmd").then(function(){
     toast(mode==="on" ? "Отправлено: работаем — комп включит попапы при ближайшем синке"
                       : "Отправлено: пауза — комп замолчит при ближайшем синке");
   });
   paintWork();
+}
+function toggleWork(){
+  var b=$("wk-btn");
+  var mode = b.classList.contains("on") ? "off" : "on";
+  if(mode==="on"){ hideKindRow(); sendWorkCmd("on"); return; }
+  // pausing: send right away (no kind), then offer «что там?» — a tap
+  // re-sends the command enriched with the kind, десктоп не сбрасывает таймер
+  sendWorkCmd("off");
+  showKindRow();
+}
+var KIND_LABELS = { life:"Обед / быт", sport:"Тренировка", remote:"Работа с телефона" };
+function hideKindRow(){ var r=document.getElementById("wk-kinds"); if(r) r.remove(); }
+function showKindRow(){
+  hideKindRow();
+  var bar=document.querySelector(".topbar");
+  var row=document.createElement("div");
+  row.id="wk-kinds";
+  Object.keys(KIND_LABELS).forEach(function(k){
+    var btn=document.createElement("button");
+    btn.textContent=KIND_LABELS[k];
+    btn.onclick=function(){
+      sendWorkCmd("off", k);
+      toast("Ок: «"+KIND_LABELS[k]+"» — запишется в день, когда вернёшься");
+      hideKindRow();
+    };
+    row.appendChild(btn);
+  });
+  var skip=document.createElement("button");
+  skip.textContent="Просто отошёл";
+  skip.className="dim";
+  skip.onclick=hideKindRow;
+  row.appendChild(skip);
+  bar.parentNode.insertBefore(row, bar.nextSibling);
 }
 
 function render(){
