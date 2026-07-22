@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101216">
-<title>Кинуть задачу — Focus Log</title>
+<title>Send a task — Focus Log</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { color-scheme: dark; }
 :root { --bg:#101216; --panel:#171a20; --card:#1d2129; --text:#eceef4; --muted:#9aa0af; --faint:#5c6270;
   --line:#262b35; --hair:#1c212a; --accent:#5b8def; --p1:#e5533c; --p2:#f2a65a; --p3:#5b8def; --green:#4fc1a6; }
 html,body { background:var(--bg); color:var(--text); font:16px/1.45 -apple-system,"SF Pro Text","Segoe UI",system-ui,sans-serif; }
@@ -22,7 +23,9 @@ h1 .pdot { width:13px; height:13px; border-radius:5px; background:var(--accent);
 .in { width:100%; padding:12px 14px; background:var(--card); border:1px solid rgba(255,255,255,.05); border-radius:12px; color:var(--text); font-size:15px; outline:none; margin-top:8px; font-family:inherit; }
 .in:focus { border-color:var(--accent); }
 textarea.in { resize:vertical; min-height:74px; }
-.primary { background:var(--accent); border-radius:12px; color:#fff; padding:13px 16px; font-size:15px; font-weight:600; width:100%; margin-top:12px; }
+.lbl { display:block; font-size:12.5px; color:var(--muted); margin:14px 0 0; }
+input[type=date].in { margin-top:6px; }
+.primary { background:var(--accent); border-radius:12px; color:#fff; padding:13px 16px; font-size:15px; font-weight:600; width:100%; margin-top:14px; }
 .primary:disabled { opacity:.5; }
 .center { text-align:center; color:var(--faint); font-size:13.5px; padding:30px 16px; line-height:1.6; }
 .ok { color:var(--green); font-size:14px; text-align:center; padding:10px 0 2px; }
@@ -45,25 +48,27 @@ textarea.in { resize:vertical; min-height:74px; }
 </head>
 <body>
 <main>
-  <div id="loading" class="center">Открываю проект…</div>
-  <div id="dead" class="center hidden">Ссылка не работает — её отозвали или проект удалён.<br>Попроси новую у владельца.</div>
+  <div id="loading" class="center">Opening project…</div>
+  <div id="dead" class="center hidden">This link isn't active — it was revoked or the project was removed.<br>Ask the owner for a new one.</div>
 
   <div id="app" class="hidden">
-    <h1><span class="pdot" id="pdot"></span><span id="pname">Проект</span></h1>
-    <p class="sub">Задача попадёт владельцу проекта во «Входящие».</p>
+    <h1><span class="pdot" id="pdot"></span><span id="pname">Project</span></h1>
+    <p class="sub">Your task lands straight in the project owner's Inbox.</p>
 
     <div class="card">
-      <h2>Кинуть задачу</h2>
-      <input type="text" class="in" id="f-author" placeholder="Твоё имя (видно владельцу)" autocomplete="name" maxlength="60">
-      <textarea class="in" id="f-text" placeholder="Что нужно сделать?" maxlength="300"></textarea>
-      <textarea class="in" id="f-note" placeholder="Деталь / ссылка (необязательно)" maxlength="2000"></textarea>
-      <button class="primary" id="f-send">Отправить</button>
-      <div id="f-ok" class="ok hidden">✓ Улетело — владелец увидит во «Входящих».</div>
+      <h2>Send a task</h2>
+      <input type="text" class="in" id="f-author" placeholder="Your name (visible to the owner)" autocomplete="name" maxlength="60">
+      <textarea class="in" id="f-text" placeholder="What needs to be done?" maxlength="300"></textarea>
+      <textarea class="in" id="f-note" placeholder="Detail / link (optional)" maxlength="2000"></textarea>
+      <label class="lbl" for="f-deadline">Needed by (optional)</label>
+      <input type="date" class="in" id="f-deadline">
+      <button class="primary" id="f-send">Send</button>
+      <div id="f-ok" class="ok hidden">✓ Sent — the owner will see it in their Inbox.</div>
       <div id="f-err" class="err hidden"></div>
     </div>
 
     <div class="card hidden" id="tasks-card">
-      <h2>Открытые задачи проекта <span id="tcount" style="color:var(--faint);text-transform:none;letter-spacing:0"></span></h2>
+      <h2>Open tasks in this project <span id="tcount" style="color:var(--faint);text-transform:none;letter-spacing:0"></span></h2>
       <div id="tasks"></div>
     </div>
   </div>
@@ -79,7 +84,7 @@ function fmtDay(dk){
   if(!dk) return null;
   var p = dk.split("-");
   var d = new Date(+p[0], +p[1]-1, +p[2]);
-  return d.toLocaleDateString("ru-RU", { day:"numeric", month:"short" }).replace(/\.$/, "");
+  return d.toLocaleDateString("en-US", { day:"numeric", month:"short" });
 }
 
 function die(){ $("loading").classList.add("hidden"); $("dead").classList.remove("hidden"); }
@@ -102,7 +107,7 @@ else fetch(API + "/api/share/" + token).then(function(r){
     $("tasks-card").classList.remove("hidden");
     $("tcount").textContent = open.length ? "· " + open.length : "";
     var box = $("tasks");
-    if(!open.length) box.innerHTML = '<p class="center" style="padding:12px">Открытых задач нет.</p>';
+    if(!open.length) box.innerHTML = '<p class="center" style="padding:12px">No open tasks.</p>';
     var today = new Date(); var pad = function(n){ return (n<10?"0":"")+n; };
     var tk = today.getFullYear()+"-"+pad(today.getMonth()+1)+"-"+pad(today.getDate());
     open.forEach(function(t){
@@ -118,7 +123,7 @@ else fetch(API + "/api/share/" + token).then(function(r){
       mainEl.appendChild(tx);
       var bits = [];
       if(t.day) bits.push({ txt:"📅 " + fmtDay(t.day), late: t.day < tk });
-      if(t.deadline) bits.push({ txt:"до " + fmtDay(t.deadline), late: t.deadline <= tk });
+      if(t.deadline) bits.push({ txt:"due " + fmtDay(t.deadline), late: t.deadline <= tk });
       if(bits.length){
         var meta = document.createElement("div");
         meta.className = "meta";
@@ -150,16 +155,17 @@ $("f-send").addEventListener("click", function(){
     body: JSON.stringify({
       text: text,
       note: $("f-note").value.trim() || null,
-      author: $("f-author").value.trim() || null
+      author: $("f-author").value.trim() || null,
+      deadline: $("f-deadline").value || null
     })
   }).then(function(r){ return r.json().then(function(b){ return { ok:r.ok, b:b }; }); })
     .then(function(res){
       btn.disabled = false;
-      if(!res.ok){ $("f-err").textContent = res.b.error || "Не получилось, попробуй ещё раз."; $("f-err").classList.remove("hidden"); return; }
-      $("f-text").value = ""; $("f-note").value = "";
+      if(!res.ok){ $("f-err").textContent = res.b.error || "Something went wrong — try again."; $("f-err").classList.remove("hidden"); return; }
+      $("f-text").value = ""; $("f-note").value = ""; $("f-deadline").value = "";
       $("f-ok").classList.remove("hidden");
     })
-    .catch(function(){ btn.disabled = false; $("f-err").textContent = "Нет сети — попробуй ещё раз."; $("f-err").classList.remove("hidden"); });
+    .catch(function(){ btn.disabled = false; $("f-err").textContent = "No connection — try again."; $("f-err").classList.remove("hidden"); });
 });
 </script>
 </body>
